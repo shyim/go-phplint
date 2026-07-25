@@ -575,7 +575,7 @@ func (v *compileValidator) validateReturn(statement *ast.StmtReturn) {
 
 func (v *compileValidator) validateYield(node ast.Vertex) {
 	returnType := v.enclosingReturnType()
-	name := strings.ToLower(simpleTypeName(returnType))
+	name := strings.ToLower(strings.TrimPrefix(simpleTypeName(returnType), `\`))
 	if name == "" {
 		return
 	}

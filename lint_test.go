@@ -42,6 +42,10 @@ func TestLintBasicSyntaxAndCompileErrors(t *testing.T) {
 			source: "<?php function greet(string $name): string { return \"Hi $name\"; }",
 		},
 		{
+			name:   "fully qualified lowercase generator return type",
+			source: `<?php function lines(): \generator { yield "line"; }`,
+		},
+		{
 			name:       "syntax error",
 			source:     "<?php function broken( {",
 			wantPhrase: "syntax error",

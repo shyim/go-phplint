@@ -42,6 +42,7 @@ func TestNativePHPOracle(t *testing.T) {
 		{name: "basic", source: "<?php echo 'ok';"},
 		{name: "mixed html", source: "<h1>Title</h1><?php echo 'body'; ?>"},
 		{name: "short tag", source: "<? echo 'short';"},
+		{name: "fully qualified lowercase generator return type", source: `<?php function lines(): \generator { yield "line"; }`},
 		{name: "flexible heredoc", source: "<?php\n$value = <<<TEXT\n  content\n  TEXT;\n"},
 		{name: "trailing call comma", source: "<?php trim('value',);"},
 		{name: "list assignment reference", source: "<?php [$first, &$second] = $values;"},
