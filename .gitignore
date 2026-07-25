@@ -1,0 +1,7 @@
+/phplint
+/cmd/phplint/phplint
+/phplint-oracle*.test
+/coverage.out
+/.idea/
+/.vscode/
+.DS_Store

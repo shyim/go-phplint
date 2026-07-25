@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test
+        run: go test ./...
+      - name: Vet project code
+        run: go vet . ./cmd/phplint
+      - name: Build
+        run: go build -trimpath -ldflags "-X main.buildVersion=ci" -o phplint ./cmd/phplint
+
+  native-oracle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: "7.4"
+            image: "php:7.4-cli@sha256:620a6b9f4d4feef2210026172570465e9d0c1de79766418d3affd09190a7fda5"
+          - php: "8.0"
+            image: "php:8.0-cli@sha256:0569e384b9064c04dec55dc6e41be41b494a878dfbb6577a7d76bd50cfd5bc00"
+          - php: "8.1"
+            image: "php:8.1-cli@sha256:76e563191d1ade120313a8736df24154d21da5155c0756f147c0b01bd19d9087"
+          - php: "8.2"
+            image: "php:8.2-cli@sha256:d806e07fee6d5dd333d3728bcaa4bf201071e037ada3cb31963445999ac1af9c"
+          - php: "8.3"
+            image: "php:8.3-cli@sha256:2a3f699b6cb31e5638c5432e4d37d4047853ba6351a692c91e0a073af00a55cc"
+          - php: "8.4"
+            image: "php:8.4-cli@sha256:3a70cc45c4b03b691f04ea3c032030613a5ff6ee61053127aadb8a93b39cc7c3"
+          - php: "8.5"
+            image: "php:8.5-cli@sha256:58b996c35ce0511cdbaa1fc0476a194fd0221097d721ff7df5af0b6f1a3d0202"
+          - php: "8.6 Alpha 2"
+            image: "php:8.6-rc-cli@sha256:41f6360c7e9b5b960e919784c53561d7b47fa93bf28ada86b74358eb252f8862"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build oracle test binary
+        run: CGO_ENABLED=0 go test -c -o phplint-oracle.test .
+      - name: Compare with PHP ${{ matrix.php }}
+        run: >-
+          docker run --rm
+          --volume "$PWD:/workspace"
+          --workdir /workspace
+          "${{ matrix.image }}"
+          ./phplint-oracle.test
+          -test.run "^TestNativePHPOracle$"
+          -test.v
