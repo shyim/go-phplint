@@ -22,7 +22,7 @@ func TestParseVersion(t *testing.T) {
 		})
 	}
 
-	for _, invalid := range []string{"", "7.3", "8", "8.6.1", "9.0"} {
+	for _, invalid := range []string{"", "7.1", "8", "8.6.1", "9.0"} {
 		if _, err := ParseVersion(invalid); err == nil {
 			t.Errorf("ParseVersion(%q) unexpectedly succeeded", invalid)
 		}
@@ -102,6 +102,54 @@ func TestLintVersionBoundaries(t *testing.T) {
 		before     Version
 		introduced Version
 	}{
+		{
+			name:       "flexible heredoc",
+			source:     "<?php\n$value = <<<TEXT\n  content\n  TEXT;\n",
+			before:     PHP72,
+			introduced: PHP73,
+		},
+		{
+			name:       "trailing call comma",
+			source:     "<?php trim('value',);",
+			before:     PHP72,
+			introduced: PHP73,
+		},
+		{
+			name:       "list assignment reference",
+			source:     "<?php [$first, &$second] = $values;",
+			before:     PHP72,
+			introduced: PHP73,
+		},
+		{
+			name:       "typed property",
+			source:     "<?php class Value { public int $number; }",
+			before:     PHP73,
+			introduced: PHP74,
+		},
+		{
+			name:       "arrow function",
+			source:     "<?php $double = fn(int $value): int => $value * 2;",
+			before:     PHP73,
+			introduced: PHP74,
+		},
+		{
+			name:       "null coalescing assignment",
+			source:     "<?php $value ??= 'default';",
+			before:     PHP73,
+			introduced: PHP74,
+		},
+		{
+			name:       "array unpacking",
+			source:     "<?php $all = [0, ...$values];",
+			before:     PHP73,
+			introduced: PHP74,
+		},
+		{
+			name:       "numeric literal separator",
+			source:     "<?php $million = 1_000_000;",
+			before:     PHP73,
+			introduced: PHP74,
+		},
 		{
 			name:       "union type",
 			source:     "<?php function normalize(int|string $value): int|string { return $value; }",

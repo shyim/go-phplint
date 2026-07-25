@@ -3,9 +3,9 @@ package traverser_test
 import (
 	"testing"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor/traverser"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor/traverser"
 )
 
 // testCase is a traverser that does not go into any class statement or its children.

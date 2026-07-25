@@ -11,8 +11,8 @@ import __yyfmt__ "fmt"
 import (
 	"strconv"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
 )
 
 // line internal/php7/php7.y:13

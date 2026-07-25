@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/shyim/phplint-go/internal/php/internal/php7"
-	"github.com/shyim/phplint-go/internal/php/pkg/conf"
-	"github.com/shyim/phplint-go/internal/php/pkg/version"
+	"github.com/shyim/go-phplint/internal/php/internal/php7"
+	"github.com/shyim/go-phplint/internal/php/pkg/conf"
+	"github.com/shyim/go-phplint/internal/php/pkg/version"
 )
 
 func BenchmarkPhp7(b *testing.B) {

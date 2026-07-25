@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/shyim/phplint-go/internal/php/internal/position"
+	"github.com/shyim/go-phplint/internal/php/internal/position"
 	"gotest.tools/assert"
 )
 

@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"text/template"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
 )
 
 type templData struct {
@@ -27,7 +27,7 @@ var fileTempl = template.Must(
 
 package ast
 
-import "github.com/shyim/phplint-go/internal/php/pkg/position"
+import "github.com/shyim/go-phplint/internal/php/pkg/position"
 
 type Type int
 

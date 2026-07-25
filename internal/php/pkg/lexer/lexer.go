@@ -3,10 +3,10 @@ package lexer
 import (
 	"errors"
 
-	"github.com/shyim/phplint-go/internal/php/internal/php7"
-	"github.com/shyim/phplint-go/internal/php/internal/php8"
-	"github.com/shyim/phplint-go/internal/php/pkg/conf"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/internal/php7"
+	"github.com/shyim/go-phplint/internal/php/internal/php8"
+	"github.com/shyim/go-phplint/internal/php/pkg/conf"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
 )
 
 var ErrVersionOutOfRange = errors.New("the version is out of supported range")

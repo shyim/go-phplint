@@ -3,7 +3,7 @@ package phplint
 import (
 	"fmt"
 
-	phpposition "github.com/shyim/phplint-go/internal/php/pkg/position"
+	phpposition "github.com/shyim/go-phplint/internal/php/pkg/position"
 )
 
 // Position identifies a byte position in source code.

@@ -5,10 +5,10 @@ import (
 
 	"gotest.tools/assert"
 
-	builder "github.com/shyim/phplint-go/internal/php/internal/position"
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
-	"github.com/shyim/phplint-go/internal/php/pkg/position"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
+	builder "github.com/shyim/go-phplint/internal/php/internal/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
 )
 
 func TestNewTokenPosition(t *testing.T) {

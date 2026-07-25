@@ -1,4 +1,4 @@
-module github.com/shyim/phplint-go
+module github.com/shyim/go-phplint
 
 go 1.24.0
 

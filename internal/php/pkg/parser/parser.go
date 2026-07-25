@@ -3,11 +3,11 @@ package parser
 import (
 	"errors"
 
-	"github.com/shyim/phplint-go/internal/php/internal/php7"
-	"github.com/shyim/phplint-go/internal/php/internal/php8"
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
-	"github.com/shyim/phplint-go/internal/php/pkg/conf"
-	"github.com/shyim/phplint-go/internal/php/pkg/version"
+	"github.com/shyim/go-phplint/internal/php/internal/php7"
+	"github.com/shyim/go-phplint/internal/php/internal/php8"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/conf"
+	"github.com/shyim/go-phplint/internal/php/pkg/version"
 )
 
 // ErrVersionOutOfRange is returned if the version is not supported

@@ -1,7 +1,7 @@
 package traverser
 
 import (
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
 )
 
 //go:generate go run traverser_gen.go

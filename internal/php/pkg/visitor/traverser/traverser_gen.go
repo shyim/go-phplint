@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	phpast "github.com/shyim/phplint-go/internal/php/pkg/ast"
+	phpast "github.com/shyim/go-phplint/internal/php/pkg/ast"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -32,7 +32,7 @@ var fileTempl = template.Must(
 
 package traverser
 
-import "github.com/shyim/phplint-go/internal/php/pkg/ast"
+import "github.com/shyim/go-phplint/internal/php/pkg/ast"
 {{range $typ := .Types}}
 func (t *Traverser) {{$typ.FuncName}}(n *ast.{{$typ.Name}}) {
     if !t.checkEntrance(n) {

@@ -9,11 +9,11 @@ Package usage example:
 		"log"
 		"os"
 
-		"github.com/shyim/phplint-go/internal/php/pkg/conf"
-		"github.com/shyim/phplint-go/internal/php/pkg/errors"
-		"github.com/shyim/phplint-go/internal/php/pkg/parser"
-		"github.com/shyim/phplint-go/internal/php/pkg/version"
-		"github.com/shyim/phplint-go/internal/php/pkg/visitor/dumper"
+		"github.com/shyim/go-phplint/internal/php/pkg/conf"
+		"github.com/shyim/go-phplint/internal/php/pkg/errors"
+		"github.com/shyim/go-phplint/internal/php/pkg/parser"
+		"github.com/shyim/go-phplint/internal/php/pkg/version"
+		"github.com/shyim/go-phplint/internal/php/pkg/visitor/dumper"
 	)
 
 	func main() {

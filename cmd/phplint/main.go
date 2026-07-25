@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/shyim/phplint-go"
+	"github.com/shyim/go-phplint"
 )
 
 var buildVersion = "dev"
@@ -30,7 +30,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	var phpVersionValue string
 	var showVersion bool
-	flags.StringVar(&phpVersionValue, "php-version", "", "PHP minor version: 7.4 or 8.0 through 8.6 (8.6 is preview)")
+	flags.StringVar(&phpVersionValue, "php-version", "", "PHP minor version: 7.2 through 7.4 or 8.0 through 8.6 (8.6 is preview)")
 	flags.BoolVar(&showVersion, "version", false, "print the phplint version")
 	flags.Usage = func() {
 		_, _ = fmt.Fprintln(stderr, "Usage: phplint --php-version <version> <file.php> [more.php ...]")

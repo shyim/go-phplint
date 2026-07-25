@@ -1,6 +1,6 @@
 package token
 
-import "github.com/shyim/phplint-go/internal/php/pkg/position"
+import "github.com/shyim/go-phplint/internal/php/pkg/position"
 
 //go:generate stringer -type=ID -output ./token_string.go
 type ID int

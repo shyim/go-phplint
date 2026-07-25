@@ -2,7 +2,7 @@
 
 package ast
 
-import "github.com/shyim/phplint-go/internal/php/pkg/position"
+import "github.com/shyim/go-phplint/internal/php/pkg/position"
 
 type Type int
 

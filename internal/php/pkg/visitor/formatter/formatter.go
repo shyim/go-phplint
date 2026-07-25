@@ -3,8 +3,8 @@ package formatter
 import (
 	"bytes"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
 )
 
 type formatterState int

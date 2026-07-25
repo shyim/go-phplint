@@ -1,8 +1,8 @@
 package ast
 
 import (
-	"github.com/shyim/phplint-go/internal/php/pkg/position"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/pkg/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
 )
 
 //go:generate go run node_funcs_gen.go

@@ -2,7 +2,7 @@
 
 package traverser
 
-import "github.com/shyim/phplint-go/internal/php/pkg/ast"
+import "github.com/shyim/go-phplint/internal/php/pkg/ast"
 
 func (t *Traverser) Root(n *ast.Root) {
     if !t.checkEntrance(n) {

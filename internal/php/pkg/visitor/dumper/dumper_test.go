@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/position"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor/dumper"
+	"github.com/shyim/go-phplint/internal/php/pkg/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor/dumper"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
 )
 
 func TestDumper_root(t *testing.T) {

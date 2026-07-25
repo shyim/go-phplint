@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/conf"
-	"github.com/shyim/phplint-go/internal/php/pkg/parser"
-	"github.com/shyim/phplint-go/internal/php/pkg/version"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor/dumper"
+	"github.com/shyim/go-phplint/internal/php/pkg/conf"
+	"github.com/shyim/go-phplint/internal/php/pkg/parser"
+	"github.com/shyim/go-phplint/internal/php/pkg/version"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor/dumper"
 	"gotest.tools/assert"
 )
 

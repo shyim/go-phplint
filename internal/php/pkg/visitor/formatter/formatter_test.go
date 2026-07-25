@@ -2,12 +2,12 @@ package formatter_test
 
 import (
 	"bytes"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor/formatter"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor/printer"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor/formatter"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor/printer"
 	"testing"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
 )
 
 func TestFormatter_Root(t *testing.T) {

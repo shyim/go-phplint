@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/position"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/pkg/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
 )
 
 type Dumper struct {

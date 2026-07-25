@@ -31,6 +31,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - php: "7.2"
+            image: "php:7.2-cli@sha256:42ffbc0798e4449bbd1e14fc4dcb87774aa1ad1900a09ef6a965bc0880aa2161"
+          - php: "7.3"
+            image: "php:7.3-cli@sha256:bd6f2dc7a4e4537e927355c94a74c3022911aa504278f5f0fd94016c90dfaecc"
           - php: "7.4"
             image: "php:7.4-cli@sha256:620a6b9f4d4feef2210026172570465e9d0c1de79766418d3affd09190a7fda5"
           - php: "8.0"

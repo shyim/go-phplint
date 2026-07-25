@@ -3,7 +3,7 @@ package errors
 import (
 	"fmt"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/position"
 )
 
 // Error parsing error

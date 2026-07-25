@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"strings"
 
-	phpversion "github.com/shyim/phplint-go/internal/php/pkg/version"
+	phpversion "github.com/shyim/go-phplint/internal/php/pkg/version"
 )
 
 // Version identifies a PHP minor-language profile.
 type Version uint8
 
 const (
-	PHP74 Version = iota + 1
+	PHP72 Version = iota + 1
+	PHP73
+	PHP74
 	PHP80
 	PHP81
 	PHP82
@@ -23,6 +25,8 @@ const (
 )
 
 var supportedVersions = [...]Version{
+	PHP72,
+	PHP73,
 	PHP74,
 	PHP80,
 	PHP81,
@@ -39,6 +43,10 @@ var supportedVersions = [...]Version{
 // at minor-version granularity.
 func ParseVersion(value string) (Version, error) {
 	switch strings.TrimSpace(value) {
+	case "7.2":
+		return PHP72, nil
+	case "7.3":
+		return PHP73, nil
 	case "7.4":
 		return PHP74, nil
 	case "8.0":
@@ -57,7 +65,7 @@ func ParseVersion(value string) (Version, error) {
 		return PHP86, nil
 	default:
 		return 0, fmt.Errorf(
-			"unsupported PHP version %q (supported: 7.4, 8.0, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6 preview)",
+			"unsupported PHP version %q (supported: 7.2, 7.3, 7.4, 8.0, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6 preview)",
 			value,
 		)
 	}
@@ -73,6 +81,10 @@ func SupportedVersions() []Version {
 // String returns the canonical major.minor form of the version.
 func (v Version) String() string {
 	switch v {
+	case PHP72:
+		return "7.2"
+	case PHP73:
+		return "7.3"
 	case PHP74:
 		return "7.4"
 	case PHP80:
@@ -95,12 +107,12 @@ func (v Version) String() string {
 }
 
 func (v Version) valid() bool {
-	return v >= PHP74 && v <= PHP86
+	return v >= PHP72 && v <= PHP86
 }
 
 func (v Version) internal() *phpversion.Version {
-	if v == PHP74 {
-		return &phpversion.Version{Major: 7, Minor: 4}
+	if v <= PHP74 {
+		return &phpversion.Version{Major: 7, Minor: uint64(v-PHP72) + 2}
 	}
 
 	return &phpversion.Version{Major: 8, Minor: uint64(v - PHP80)}

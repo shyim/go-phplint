@@ -1,6 +1,6 @@
 package ast
 
-import "github.com/shyim/phplint-go/internal/php/pkg/position"
+import "github.com/shyim/go-phplint/internal/php/pkg/position"
 
 // The edge-case/overwrites, from node type name to their visitor function name.
 var TypeToVisitorNameMap = map[string]string{

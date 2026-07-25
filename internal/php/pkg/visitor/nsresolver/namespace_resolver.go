@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor"
 )
 
 // NamespaceResolver visitor

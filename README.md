@@ -1,9 +1,9 @@
-# phplint-go
+# go-phplint
 
 `phplint` is a source-only PHP syntax and compile-time linter written in Go. It
 selects the PHP language profile explicitly, so one executable can check code
-for PHP 7.4 or any PHP 8 minor from 8.0 through 8.6 without installing those PHP
-runtimes. PHP 8.6 support is currently a preview profile.
+for PHP 7.2 through 7.4 or any PHP 8 minor from 8.0 through 8.6 without
+installing those PHP runtimes. PHP 8.6 support is currently a preview profile.
 
 The normal build is pure Go. The PHP lexer/parser sources are embedded in this
 repository, and the linter adds version gates and recoverable compile-time
@@ -28,6 +28,7 @@ go build -trimpath -ldflags "-X main.buildVersion=v0.1.0" -o phplint ./cmd/phpli
 Pass exactly one supported PHP minor and one or more files:
 
 ```sh
+phplint --php-version 7.2 oldest-supported.php
 phplint --php-version 7.4 legacy.php
 phplint --php-version 8.4 src/App.php src/Domain.php
 phplint --php-version 8.6 preview.php
@@ -58,7 +59,7 @@ package main
 import (
 	"fmt"
 
-	phplint "github.com/shyim/phplint-go"
+	phplint "github.com/shyim/go-phplint"
 )
 
 func main() {
@@ -82,10 +83,11 @@ line and column values are one-based.
 
 ## Compatibility scope
 
-The stable profiles are exactly `7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`,
-and `8.5`. The `8.6` profile follows PHP 8.6.0 Alpha 2 and remains a preview
-until PHP 8.6 reaches general availability. Patch versions such as `8.4.2` are
-rejected because syntax profiles are maintained at minor-version granularity.
+The stable profiles are exactly `7.2`, `7.3`, `7.4`, `8.0`, `8.1`, `8.2`,
+`8.3`, `8.4`, and `8.5`. The `8.6` profile follows PHP 8.6.0 Alpha 2 and
+remains a preview until PHP 8.6 reaches general availability. Patch versions
+such as `8.4.2` are rejected because syntax profiles are maintained at
+minor-version granularity.
 
 The goal is native `php -l` pass/fail behavior for syntax errors and
 single-file compile-time fatal errors, not identical diagnostic wording.

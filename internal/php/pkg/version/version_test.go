@@ -5,7 +5,7 @@ import (
 
 	"gotest.tools/assert"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/version"
+	"github.com/shyim/go-phplint/internal/php/pkg/version"
 )
 
 func Test(t *testing.T) {

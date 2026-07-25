@@ -1,13 +1,13 @@
 package nsresolver_test
 
 import (
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor/nsresolver"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor/traverser"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor/nsresolver"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor/traverser"
 	"testing"
 
 	"gotest.tools/assert"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
 )
 
 func TestResolveStaticCall(t *testing.T) {

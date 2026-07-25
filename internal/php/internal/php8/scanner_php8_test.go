@@ -3,11 +3,11 @@ package php8_test
 import (
 	"testing"
 
-	"github.com/shyim/phplint-go/internal/php/internal/php8"
-	"github.com/shyim/phplint-go/internal/php/internal/tester"
-	"github.com/shyim/phplint-go/internal/php/pkg/conf"
-	"github.com/shyim/phplint-go/internal/php/pkg/position"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/internal/php8"
+	"github.com/shyim/go-phplint/internal/php/internal/tester"
+	"github.com/shyim/go-phplint/internal/php/pkg/conf"
+	"github.com/shyim/go-phplint/internal/php/pkg/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
 	"gotest.tools/assert"
 )
 

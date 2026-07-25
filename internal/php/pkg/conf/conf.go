@@ -1,8 +1,8 @@
 package conf
 
 import (
-	"github.com/shyim/phplint-go/internal/php/pkg/errors"
-	"github.com/shyim/phplint-go/internal/php/pkg/version"
+	"github.com/shyim/go-phplint/internal/php/pkg/errors"
+	"github.com/shyim/go-phplint/internal/php/pkg/version"
 )
 
 type Config struct {

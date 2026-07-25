@@ -5,12 +5,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/shyim/phplint-go/internal/php/internal/php8"
-	"github.com/shyim/phplint-go/internal/php/internal/tester"
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
-	"github.com/shyim/phplint-go/internal/php/pkg/conf"
-	"github.com/shyim/phplint-go/internal/php/pkg/version"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor/printer"
+	"github.com/shyim/go-phplint/internal/php/internal/php8"
+	"github.com/shyim/go-phplint/internal/php/internal/tester"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/conf"
+	"github.com/shyim/go-phplint/internal/php/pkg/version"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor/printer"
 	"gotest.tools/assert"
 )
 

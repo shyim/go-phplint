@@ -5,8 +5,8 @@ import (
 
 	"gotest.tools/assert"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/errors"
-	"github.com/shyim/phplint-go/internal/php/pkg/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/errors"
+	"github.com/shyim/go-phplint/internal/php/pkg/position"
 )
 
 func TestConstructor(t *testing.T) {

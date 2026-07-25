@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/conf"
-	phperrors "github.com/shyim/phplint-go/internal/php/pkg/errors"
-	phplexer "github.com/shyim/phplint-go/internal/php/pkg/lexer"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
-	phpversion "github.com/shyim/phplint-go/internal/php/pkg/version"
+	"github.com/shyim/go-phplint/internal/php/pkg/conf"
+	phperrors "github.com/shyim/go-phplint/internal/php/pkg/errors"
+	phplexer "github.com/shyim/go-phplint/internal/php/pkg/lexer"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
+	phpversion "github.com/shyim/go-phplint/internal/php/pkg/version"
 )
 
 type sourceLayout struct {
@@ -28,6 +28,7 @@ func prepareSource(source []byte, version Version, filename string) ([]byte, []D
 	layout := analyzeLayout(tokens)
 
 	prepareDNFTypes(prepared, tokens, version, filename, &diagnostics)
+	prepareNumericLiteralSeparators(tokens, version, filename, &diagnostics)
 	prepareTypedClassConstants(prepared, tokens, layout, version, filename, &diagnostics)
 	prepareReadonlyAnonymousClasses(prepared, tokens, version, filename, &diagnostics)
 	prepareDynamicClassConstants(prepared, tokens, version, filename, &diagnostics)
@@ -41,6 +42,31 @@ func prepareSource(source []byte, version Version, filename string) ([]byte, []D
 	prepareFinalPromotedProperties(prepared, tokens, layout, version, filename, &diagnostics)
 
 	return prepared, diagnostics
+}
+
+func prepareNumericLiteralSeparators(
+	tokens []*token.Token,
+	version Version,
+	filename string,
+	diagnostics *[]Diagnostic,
+) {
+	for _, current := range tokens {
+		if current.ID != token.T_LNUMBER && current.ID != token.T_DNUMBER {
+			continue
+		}
+		if !bytes.ContainsRune(current.Value, '_') {
+			continue
+		}
+		addFeatureDiagnostic(
+			diagnostics,
+			filename,
+			current,
+			current,
+			version,
+			PHP74,
+			"numeric literal separators",
+		)
+	}
 }
 
 func prepareDNFTypes(
@@ -1057,7 +1083,7 @@ func prepareConstantAttributes(
 	diagnostics *[]Diagnostic,
 ) {
 	// Before PHP 8, "#[" starts a line comment rather than an attribute.
-	if version == PHP74 {
+	if version < PHP80 {
 		return
 	}
 

@@ -3,7 +3,7 @@ package php8_test
 import (
 	"testing"
 
-	"github.com/shyim/phplint-go/internal/php/internal/tester"
+	"github.com/shyim/go-phplint/internal/php/internal/tester"
 )
 
 func TestClassReadonlyModifier(t *testing.T) {

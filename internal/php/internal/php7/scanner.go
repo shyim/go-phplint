@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
 )
 
 // line internal/php7/scanner.go:15

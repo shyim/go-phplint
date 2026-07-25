@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"strings"
 
-	pos "github.com/shyim/phplint-go/internal/php/internal/position"
-	"github.com/shyim/phplint-go/internal/php/pkg/conf"
-	"github.com/shyim/phplint-go/internal/php/pkg/errors"
-	"github.com/shyim/phplint-go/internal/php/pkg/position"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
-	"github.com/shyim/phplint-go/internal/php/pkg/version"
+	pos "github.com/shyim/go-phplint/internal/php/internal/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/conf"
+	"github.com/shyim/go-phplint/internal/php/pkg/errors"
+	"github.com/shyim/go-phplint/internal/php/pkg/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/pkg/version"
 )
 
 type Lexer struct {

@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor"
-	"github.com/shyim/phplint-go/internal/php/pkg/visitor/traverser"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor"
+	"github.com/shyim/go-phplint/internal/php/pkg/visitor/traverser"
 )
 
 type compileValidator struct {
@@ -53,6 +53,10 @@ func (v *compileValidator) EnterNode(node ast.Vertex) bool {
 		v.validateClosure(current)
 	case *ast.ExprArrowFunction:
 		v.validateArrowFunction(current)
+	case *ast.ExprAssignCoalesce:
+		v.requireVersion(current, PHP74, "null coalescing assignment")
+	case *ast.ExprArrayItem:
+		v.validateArrayItem(current)
 	case *ast.StmtPropertyList:
 		v.validatePropertyList(current)
 	case *ast.Parameter:
@@ -74,17 +78,22 @@ func (v *compileValidator) EnterNode(node ast.Vertex) bool {
 	case *ast.ExprYieldFrom:
 		v.validateYield(current)
 	case *ast.ExprFunctionCall:
+		v.validateTrailingCallComma(current, len(current.Args), len(current.SeparatorTkns))
 		if current.EllipsisTkn != nil {
 			v.requireVersion(current, PHP81, "first-class callable syntax")
 		}
 	case *ast.ExprMethodCall:
+		v.validateTrailingCallComma(current, len(current.Args), len(current.SeparatorTkns))
 		if current.EllipsisTkn != nil {
 			v.requireVersion(current, PHP81, "first-class callable syntax")
 		}
 	case *ast.ExprStaticCall:
+		v.validateTrailingCallComma(current, len(current.Args), len(current.SeparatorTkns))
 		if current.EllipsisTkn != nil {
 			v.requireVersion(current, PHP81, "first-class callable syntax")
 		}
+	case *ast.ExprNew:
+		v.validateTrailingCallComma(current, len(current.Args), len(current.SeparatorTkns))
 	case *ast.StmtClassConstList:
 		v.validateClassConstants(current)
 	case *ast.EnumCase:
@@ -307,8 +316,44 @@ func (v *compileValidator) validateClosure(closure *ast.ExprClosure) {
 }
 
 func (v *compileValidator) validateArrowFunction(function *ast.ExprArrowFunction) {
+	v.requireVersion(function, PHP74, "arrow functions")
 	v.validateParameterNames(function.Params)
 	v.validateType(function.ReturnType, typeContextReturn)
+}
+
+func (v *compileValidator) validateArrayItem(item *ast.ExprArrayItem) {
+	if item.EllipsisTkn != nil {
+		v.requireVersion(item, PHP74, "array unpacking")
+	}
+	if item.AmpersandTkn != nil && v.version < PHP73 && v.inDestructuringTarget(item) {
+		v.report(item, "references in list assignments require PHP 7.3")
+	}
+}
+
+func (v *compileValidator) validateTrailingCallComma(node ast.Vertex, arguments, separators int) {
+	if v.version < PHP73 && arguments > 0 && separators >= arguments {
+		v.report(node, "trailing commas in function calls require PHP 7.3")
+	}
+}
+
+func (v *compileValidator) inDestructuringTarget(node ast.Vertex) bool {
+	for index := len(v.stack) - 1; index >= 0; index-- {
+		assignment, ok := v.stack[index].(*ast.ExprAssign)
+		if !ok {
+			continue
+		}
+		return positionContains(assignment.Var, node)
+	}
+	return false
+}
+
+func positionContains(container, child ast.Vertex) bool {
+	if container == nil || child == nil ||
+		container.GetPosition() == nil || child.GetPosition() == nil {
+		return false
+	}
+	return child.GetPosition().StartPos >= container.GetPosition().StartPos &&
+		child.GetPosition().EndPos <= container.GetPosition().EndPos
 }
 
 func (v *compileValidator) validateParameterNames(parameters []ast.Vertex) {
@@ -360,6 +405,9 @@ func (v *compileValidator) validateParameter(parameter *ast.Parameter) {
 func (v *compileValidator) validatePropertyList(property *ast.StmtPropertyList) {
 	modifiers := v.validateModifiers(property, property.Modifiers)
 	readonly := modifiers["readonly"] && v.version >= PHP81
+	if property.Type != nil {
+		v.requireVersion(property.Type, PHP74, "typed properties")
+	}
 	if modifiers["readonly"] && v.version < PHP81 && property.Type != nil {
 		v.requireVersion(property, PHP81, "readonly properties")
 	}

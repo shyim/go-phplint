@@ -3,10 +3,10 @@ package php8
 import (
 	"bytes"
 
-	"github.com/shyim/phplint-go/internal/php/internal/position"
-	"github.com/shyim/phplint-go/internal/php/pkg/ast"
-	position2 "github.com/shyim/phplint-go/internal/php/pkg/position"
-	"github.com/shyim/phplint-go/internal/php/pkg/token"
+	"github.com/shyim/go-phplint/internal/php/internal/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/ast"
+	position2 "github.com/shyim/go-phplint/internal/php/pkg/position"
+	"github.com/shyim/go-phplint/internal/php/pkg/token"
 )
 
 // Builder is responsible for creating nodes inside grammar rules.

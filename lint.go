@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/shyim/phplint-go/internal/php/pkg/conf"
-	phperrors "github.com/shyim/phplint-go/internal/php/pkg/errors"
-	phpparser "github.com/shyim/phplint-go/internal/php/pkg/parser"
+	"github.com/shyim/go-phplint/internal/php/pkg/conf"
+	phperrors "github.com/shyim/go-phplint/internal/php/pkg/errors"
+	phpparser "github.com/shyim/go-phplint/internal/php/pkg/parser"
 )
 
 // Options configures a lint operation.
