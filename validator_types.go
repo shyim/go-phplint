@@ -42,11 +42,15 @@ func (v *compileValidator) validateNullable(nullable *ast.Nullable) {
 func (v *compileValidator) validateUnion(union *ast.Union) {
 	seen := make(map[string]bool)
 	hasIntersection := false
+	onlyNullFalse := len(union.Types) > 0
 	for _, member := range union.Types {
 		if _, ok := member.(*ast.Intersection); ok {
 			hasIntersection = true
 		}
 		name := strings.ToLower(simpleTypeName(member))
+		if name != "null" && name != "false" {
+			onlyNullFalse = false
+		}
 		if name == "" {
 			continue
 		}
@@ -58,6 +62,15 @@ func (v *compileValidator) validateUnion(union *ast.Union) {
 
 	if hasIntersection && v.version < PHP82 {
 		v.report(union, "disjunctive normal form types require PHP 8.2")
+	}
+	// null and false are allowed as union members since PHP 8.0, but a union
+	// made up of only null and false is still a standalone type before 8.2.
+	if onlyNullFalse {
+		name := "null"
+		if seen["false"] {
+			name = "false"
+		}
+		v.requireVersion(union, PHP82, fmt.Sprintf("standalone %s types", name))
 	}
 	if seen["mixed"] && len(seen) > 1 {
 		v.report(union, "mixed cannot be part of a union type")
@@ -96,6 +109,10 @@ func (v *compileValidator) validateIntersection(intersection *ast.Intersection) 
 }
 
 func (v *compileValidator) validateType(node ast.Vertex, context typeContext) {
+	v.validateTypeNode(node, context, false)
+}
+
+func (v *compileValidator) validateTypeNode(node ast.Vertex, context typeContext, inUnion bool) {
 	if node == nil {
 		return
 	}
@@ -103,23 +120,23 @@ func (v *compileValidator) validateType(node ast.Vertex, context typeContext) {
 	switch current := node.(type) {
 	case *ast.Nullable:
 		v.validateNullable(current)
-		v.validateType(current.Expr, context)
+		v.validateTypeNode(current.Expr, context, inUnion)
 	case *ast.Union:
 		v.validateUnion(current)
 		for _, member := range current.Types {
-			v.validateType(member, context)
+			v.validateTypeNode(member, context, true)
 		}
 	case *ast.Intersection:
 		v.validateIntersection(current)
 		for _, member := range current.Types {
-			v.validateType(member, context)
+			v.validateTypeNode(member, context, inUnion)
 		}
 	default:
-		v.validateSimpleType(node, context)
+		v.validateSimpleType(node, context, inUnion)
 	}
 }
 
-func (v *compileValidator) validateSimpleType(node ast.Vertex, context typeContext) {
+func (v *compileValidator) validateSimpleType(node ast.Vertex, context typeContext, inUnion bool) {
 	name := strings.ToLower(strings.TrimPrefix(simpleTypeName(node), `\`))
 	if name == "" {
 		return
@@ -129,7 +146,9 @@ func (v *compileValidator) validateSimpleType(node ast.Vertex, context typeConte
 	case "true":
 		v.requireVersion(node, PHP82, "the true type")
 	case "false", "null":
-		v.requireVersion(node, PHP82, fmt.Sprintf("standalone %s types", name))
+		if !inUnion {
+			v.requireVersion(node, PHP82, fmt.Sprintf("standalone %s types", name))
+		}
 	case "never":
 		v.requireVersion(node, PHP81, "the never return type")
 		if context != typeContextReturn {
