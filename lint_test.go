@@ -461,6 +461,45 @@ func TestModernCompileValidation(t *testing.T) {
 	}
 }
 
+func TestCloneAsMethodNameIsNotCloneWith(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{
+			name:   "method declaration named clone",
+			source: "<?php class C { public function clone(string $id, string $other, ?string $more = null): string { return $id . $other . $more; } }",
+		},
+		{
+			name:   "static call to method named clone",
+			source: "<?php class C { public static function clone(string $a, string $b): string { return $a . $b; } } echo C::clone('a', 'b');",
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			for _, version := range []Version{PHP72, PHP84, PHP85} {
+				diagnostics, err := Lint(
+					"clone.php",
+					[]byte(test.source),
+					Options{PHPVersion: version},
+				)
+				if err != nil {
+					t.Fatalf("Lint(PHP %s) error = %v", version, err)
+				}
+				if len(diagnostics) != 0 {
+					t.Fatalf("Lint(PHP %s) diagnostics = %#v, want none", version, diagnostics)
+				}
+			}
+		})
+	}
+}
+
 func diagnosticsContain(diagnostics []Diagnostic, phrase string) bool {
 	for _, diagnostic := range diagnostics {
 		if strings.Contains(strings.ToLower(diagnostic.Message), strings.ToLower(phrase)) {
