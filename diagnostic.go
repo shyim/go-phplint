@@ -42,6 +42,10 @@ type Diagnostic struct {
 	Phase    Phase
 	Start    Position
 	End      Position
+
+	// SourceLine is the text of the line Start points into, without the
+	// line terminator. It is empty when the position is unknown.
+	SourceLine string
 }
 
 func (d Diagnostic) String() string {

@@ -80,6 +80,26 @@ func TestRunPrintsDeterministicDiagnostics(t *testing.T) {
 	}
 }
 
+func TestRunPrintsSourceLineWithCaret(t *testing.T) {
+	t.Parallel()
+
+	path := writeFixture(t, "excerpt.php", "<?php\nfunction f($v = new B(2)) {}\n")
+
+	var stdout, stderr bytes.Buffer
+	exitCode := run([]string{"--php-version", "8.0", path}, &stdout, &stderr)
+	if exitCode != 1 {
+		t.Fatalf("run() = %d, want 1; stderr = %q", exitCode, stderr.String())
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "    function f($v = new B(2)) {}\n") {
+		t.Fatalf("run() output %q is missing the source line", output)
+	}
+	if !strings.Contains(output, "\n                    ^^^^^^^^\n") {
+		t.Fatalf("run() output %q is missing the caret marker", output)
+	}
+}
+
 func TestRunRejectsDirectories(t *testing.T) {
 	t.Parallel()
 

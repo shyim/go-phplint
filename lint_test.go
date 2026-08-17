@@ -97,6 +97,25 @@ func TestLintBasicSyntaxAndCompileErrors(t *testing.T) {
 	}
 }
 
+func TestLintAttachesSourceLines(t *testing.T) {
+	t.Parallel()
+
+	diagnostics, err := Lint(
+		"test.php",
+		[]byte("<?php\nclass A {\n\tfunction x() {}\n\tfunction X() {}\n}\n"),
+		Options{PHPVersion: PHP85},
+	)
+	if err != nil {
+		t.Fatalf("Lint() error = %v", err)
+	}
+	if len(diagnostics) != 1 {
+		t.Fatalf("Lint() diagnostics = %#v, want one", diagnostics)
+	}
+	if got, want := diagnostics[0].SourceLine, "\tfunction X() {}"; got != want {
+		t.Fatalf("Lint() SourceLine = %q, want %q", got, want)
+	}
+}
+
 func TestLintVersionBoundaries(t *testing.T) {
 	t.Parallel()
 
