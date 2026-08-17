@@ -258,6 +258,30 @@ func TestLintVersionBoundaries(t *testing.T) {
 			introduced: PHP82,
 		},
 		{
+			name:       "standalone null type",
+			source:     "<?php function nothing(): null { return null; }",
+			before:     PHP81,
+			introduced: PHP82,
+		},
+		{
+			name:       "standalone nullable false type",
+			source:     "<?php function no(): ?false { return false; }",
+			before:     PHP81,
+			introduced: PHP82,
+		},
+		{
+			name:       "union of only null and false",
+			source:     "<?php function maybe(): false|null { return false; }",
+			before:     PHP81,
+			introduced: PHP82,
+		},
+		{
+			name:       "union with null member",
+			source:     "<?php function pick(string|callable|null $arrow = null): ?array { return null; }",
+			before:     PHP74,
+			introduced: PHP80,
+		},
+		{
 			name:       "trait constant",
 			source:     "<?php trait Values { public const ANSWER = 42; }",
 			before:     PHP81,
