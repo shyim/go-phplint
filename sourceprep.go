@@ -805,6 +805,15 @@ func validSetHookParameter(tokens []*token.Token, start, end int) bool {
 	return variables == 1
 }
 
+// isMethodNameUse reports whether the keyword token at index is used as a
+// method name rather than as an operator. Keywords such as "new" and "clone"
+// are only semi-reserved: after "function" or "::" they name a method. After
+// "->" and "?->" the lexer already emits them as plain identifiers.
+func isMethodNameUse(tokens []*token.Token, index int) bool {
+	return index > 0 && (tokens[index-1].ID == token.T_FUNCTION ||
+		tokens[index-1].ID == token.T_PAAMAYIM_NEKUDOTAYIM)
+}
+
 func isAmpersand(id token.ID) bool {
 	return id == token.ID('&') ||
 		id == token.T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG ||
@@ -967,7 +976,7 @@ func prepareUnparenthesizedNewDereference(
 	diagnostics *[]Diagnostic,
 ) {
 	for index := 0; index+3 < len(tokens); index++ {
-		if tokens[index].ID != token.T_NEW {
+		if tokens[index].ID != token.T_NEW || isMethodNameUse(tokens, index) {
 			continue
 		}
 
@@ -1055,10 +1064,7 @@ func prepareCloneWith(
 			continue
 		}
 
-		// "clone" is only semi-reserved: after "function" or "::" it is a
-		// method name, not the clone operator.
-		if index > 0 && (tokens[index-1].ID == token.T_FUNCTION ||
-			tokens[index-1].ID == token.T_PAAMAYIM_NEKUDOTAYIM) {
+		if isMethodNameUse(tokens, index) {
 			continue
 		}
 

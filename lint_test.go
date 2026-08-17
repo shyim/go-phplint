@@ -486,7 +486,7 @@ func TestModernCompileValidation(t *testing.T) {
 	}
 }
 
-func TestCloneAsMethodNameIsNotCloneWith(t *testing.T) {
+func TestSemiReservedMethodNamesAreNotOperators(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -500,6 +500,22 @@ func TestCloneAsMethodNameIsNotCloneWith(t *testing.T) {
 		{
 			name:   "static call to method named clone",
 			source: "<?php class C { public static function clone(string $a, string $b): string { return $a . $b; } } echo C::clone('a', 'b');",
+		},
+		{
+			name:   "dereferenced static call to method named new",
+			source: "<?php Builder::new()->qux();",
+		},
+		{
+			name:   "dereferenced static call to method named new with arguments",
+			source: "<?php Builder::new('a', 'b')->qux();",
+		},
+		{
+			name:   "dereferenced instance call to method named new",
+			source: "<?php $builder->new()->qux();",
+		},
+		{
+			name:   "method declaration named new",
+			source: "<?php class C { public static function new(): self { return new self(); } }",
 		},
 	}
 
