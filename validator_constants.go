@@ -3,7 +3,7 @@ package phplint
 import (
 	"reflect"
 
-	"github.com/shyim/go-phplint/internal/php/pkg/ast"
+	"github.com/shyim/go-phplint/internal/ast"
 )
 
 type constantContext uint8

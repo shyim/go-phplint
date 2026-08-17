@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/shyim/go-phplint/internal/php/pkg/conf"
-	phperrors "github.com/shyim/go-phplint/internal/php/pkg/errors"
-	phplexer "github.com/shyim/go-phplint/internal/php/pkg/lexer"
-	"github.com/shyim/go-phplint/internal/php/pkg/token"
-	phpversion "github.com/shyim/go-phplint/internal/php/pkg/version"
+	"github.com/shyim/go-phplint/internal/conf"
+	phperrors "github.com/shyim/go-phplint/internal/errors"
+	phplexer "github.com/shyim/go-phplint/internal/lexer"
+	"github.com/shyim/go-phplint/internal/token"
+	phpversion "github.com/shyim/go-phplint/internal/version"
 )
 
 type sourceLayout struct {

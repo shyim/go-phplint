@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shyim/go-phplint/internal/php/pkg/ast"
-	"github.com/shyim/go-phplint/internal/php/pkg/visitor"
-	"github.com/shyim/go-phplint/internal/php/pkg/visitor/traverser"
+	"github.com/shyim/go-phplint/internal/ast"
+	"github.com/shyim/go-phplint/internal/visitor"
+	"github.com/shyim/go-phplint/internal/visitor/traverser"
 )
 
 type compileValidator struct {
