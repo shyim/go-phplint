@@ -1055,6 +1055,13 @@ func prepareCloneWith(
 			continue
 		}
 
+		// "clone" is only semi-reserved: after "function" or "::" it is a
+		// method name, not the clone operator.
+		if index > 0 && (tokens[index-1].ID == token.T_FUNCTION ||
+			tokens[index-1].ID == token.T_PAAMAYIM_NEKUDOTAYIM) {
+			continue
+		}
+
 		closeIndex := matchingToken(tokens, index+1, token.ID('('), token.ID(')'))
 		if closeIndex < 0 || !hasTopLevelComma(tokens, index+2, closeIndex) {
 			continue
