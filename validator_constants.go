@@ -48,6 +48,12 @@ func isConstantExpression(node ast.Vertex, version Version, context constantCont
 		if version < PHP81 || !newAllowedInConstantContext(context) {
 			return false
 		}
+	case *ast.Argument:
+		// Argument unpacking is not supported in constant expressions.
+		if current.VariadicTkn != nil {
+			return false
+		}
+		return isConstantExpression(current.Expr, version, context)
 	case *ast.ExprPropertyFetch:
 		if version < PHP82 {
 			return false
