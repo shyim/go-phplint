@@ -215,6 +215,12 @@ func TestLintVersionBoundaries(t *testing.T) {
 			introduced: PHP81,
 		},
 		{
+			name:       "new in initializer with arguments",
+			source:     "<?php class C { public function __construct(protected Config $config = new Config(2, 0.01, true)) {} }",
+			before:     PHP80,
+			introduced: PHP81,
+		},
+		{
 			name:       "readonly class",
 			source:     "<?php readonly class Value { public int $number; }",
 			before:     PHP81,
