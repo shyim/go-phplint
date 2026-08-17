@@ -118,5 +118,5 @@ containers for every supported minor.
 The embedded parser is adapted from
 [`laytan/php-parser` v0.10.0](https://github.com/laytan/php-parser), which is
 MIT-licensed. Its original license is retained in
-[`internal/php/LICENSE`](internal/php/LICENSE). This project is also released
+[`internal/LICENSE`](internal/LICENSE). This project is also released
 under the MIT License.

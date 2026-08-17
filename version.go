@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	phpversion "github.com/shyim/go-phplint/internal/php/pkg/version"
+	phpversion "github.com/shyim/go-phplint/internal/version"
 )
 
 // Version identifies a PHP minor-language profile.
