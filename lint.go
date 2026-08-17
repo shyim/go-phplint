@@ -1,6 +1,7 @@
 package phplint
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 
@@ -61,7 +62,26 @@ func Lint(filename string, source []byte, options Options) (diagnostics []Diagno
 	}
 
 	sortDiagnostics(diagnostics)
-	return deduplicateDiagnostics(diagnostics), nil
+	diagnostics = deduplicateDiagnostics(diagnostics)
+	attachSourceLines(diagnostics, source)
+	return diagnostics, nil
+}
+
+func attachSourceLines(diagnostics []Diagnostic, source []byte) {
+	if len(diagnostics) == 0 {
+		return
+	}
+
+	lines := bytes.Split(source, []byte("\n"))
+	for index := range diagnostics {
+		line := diagnostics[index].Start.Line
+		if line < 1 || line > len(lines) {
+			continue
+		}
+		diagnostics[index].SourceLine = string(
+			bytes.TrimSuffix(lines[line-1], []byte("\r")),
+		)
+	}
 }
 
 func normalizeParserMessage(message string) string {

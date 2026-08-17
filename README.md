@@ -38,6 +38,8 @@ A successful run is silent. A source failure is concise:
 
 ```text
 src/App.php:12:9: PHP 8.4: syntax error
+    function broken( {
+            ^
 1 error(s) in 1 file(s)
 ```
 
@@ -79,7 +81,9 @@ func main() {
 
 `Lint` returns source failures as diagnostics and reserves `error` for invalid
 options or an internal failure. Diagnostic offsets are zero-based byte offsets;
-line and column values are one-based.
+line and column values are one-based. Each diagnostic also carries
+`SourceLine`, the text of the offending source line, so callers can render
+excerpts without re-reading the file.
 
 ## Compatibility scope
 

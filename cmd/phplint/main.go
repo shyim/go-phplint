@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/shyim/go-phplint"
@@ -93,6 +94,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 				phpVersion,
 				diagnostic.Message,
 			)
+			printSourceLine(stdout, diagnostic)
 		}
 	}
 
@@ -106,6 +108,39 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+func printSourceLine(stdout io.Writer, diagnostic phplint.Diagnostic) {
+	line := diagnostic.SourceLine
+	if line == "" {
+		return
+	}
+
+	start := diagnostic.Start.Column
+	if start < 1 || start > len(line)+1 {
+		_, _ = fmt.Fprintf(stdout, "    %s\n", line)
+		return
+	}
+
+	width := 1
+	if diagnostic.End.Line == diagnostic.Start.Line &&
+		diagnostic.End.Column > start {
+		width = diagnostic.End.Column - start
+	}
+	if remaining := len(line) - (start - 1); width > remaining && remaining > 0 {
+		width = remaining
+	}
+
+	// Reproduce tabs in the padding so the caret stays aligned.
+	padding := []byte(strings.Repeat(" ", start-1))
+	for index := range start - 1 {
+		if line[index] == '\t' {
+			padding[index] = '\t'
+		}
+	}
+
+	_, _ = fmt.Fprintf(stdout, "    %s\n", line)
+	_, _ = fmt.Fprintf(stdout, "    %s%s\n", padding, strings.Repeat("^", width))
 }
 
 func lintFiles(paths []string, version phplint.Version) []fileResult {
