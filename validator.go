@@ -467,6 +467,16 @@ func (v *compileValidator) validateEnumCase(enumCase *ast.EnumCase) {
 		v.version >= PHP83 && v.version < PHP86 {
 		v.report(enumCase, "the #[Override] attribute on enum cases requires PHP 8.6")
 	}
+	v.validateClassConstantName(enumCase.Name)
+}
+
+// validateClassConstantName mirrors the compile-time check PHP applies to
+// class constants and enum cases: any semi-reserved keyword is a valid name,
+// except "class", which is reserved for the ::class name fetch.
+func (v *compileValidator) validateClassConstantName(name ast.Vertex) {
+	if strings.EqualFold(nodeName(name), "class") {
+		v.report(name, "a class constant must not be called 'class'; it is reserved for class name fetching")
+	}
 }
 
 func (v *compileValidator) validateConstants(
@@ -476,7 +486,13 @@ func (v *compileValidator) validateConstants(
 ) {
 	for _, constantNode := range constants {
 		constant, ok := constantNode.(*ast.StmtConstant)
-		if !ok || constant.Expr == nil {
+		if !ok {
+			continue
+		}
+		if context == constantContextClassConstant {
+			v.validateClassConstantName(constant.Name)
+		}
+		if constant.Expr == nil {
 			continue
 		}
 		if !isConstantExpression(constant.Expr, v.version, context) {
