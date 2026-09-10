@@ -70,6 +70,28 @@ func TestLintBasicSyntaxAndCompileErrors(t *testing.T) {
 			source:     "<?php class A { public readonly $value; }",
 			wantPhrase: "must have a type",
 		},
+		{
+			name:   "semi-reserved keywords as enum case names",
+			source: "<?php enum Status: string { case NEW = 'new'; case DEFAULT = 'default'; case List = 'list'; case Function = 'function'; }",
+		},
+		{
+			name:   "semi-reserved keyword as attributed enum case name",
+			source: "<?php enum Status { #[Deprecated] case Print; }",
+		},
+		{
+			name:   "semi-reserved keyword as class constant name",
+			source: "<?php class A { const NEW = 1; const Default = 2; }",
+		},
+		{
+			name:       "enum case named class",
+			source:     "<?php enum Status { case CLASS; }",
+			wantPhrase: "must not be called 'class'",
+		},
+		{
+			name:       "class constant named class",
+			source:     "<?php class A { const class = 1; }",
+			wantPhrase: "must not be called 'class'",
+		},
 	}
 
 	for _, test := range tests {

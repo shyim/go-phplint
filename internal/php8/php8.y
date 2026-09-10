@@ -1490,7 +1490,7 @@ class_statement:
 
                 $$ = traitUse
             }
-    |   optional_attributes T_CASE identifier enum_case_expr ';'
+    |   optional_attributes T_CASE identifier_ex enum_case_expr ';'
             { $$ = yylex.(*Parser).builder.NewEnumCase($1, $2, $3, $4, $5) }
 ;
 
