@@ -1,5 +1,7 @@
 # go-phplint
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/shyim/go-phplint?utm_source=badge)
+
 `phplint` is a source-only PHP syntax and compile-time linter written in Go. It
 selects the PHP language profile explicitly, so one executable can check code
 for PHP 7.2 through 7.4 or any PHP 8 minor from 8.0 through 8.6 without
@@ -116,6 +118,20 @@ PHPLINT_PHP_BINARY=/opt/php/8.4/bin/php go test -run TestNativePHPOracle
 
 The CI oracle builds one Go test binary and runs it in official PHP CLI
 containers for every supported minor.
+
+## Benchmarks
+
+Benchmarks live next to the code they measure and use the standard `testing`
+package. They cover the public `Lint` entry point, the source preparation,
+parsing and validation stages, and the concurrent CLI pipeline:
+
+```sh
+go test -bench=. . ./cmd/phplint
+```
+
+Every push and pull request runs them on
+[CodSpeed](https://app.codspeed.io/shyim/go-phplint) with the walltime
+instrument, so performance changes show up in the pull request.
 
 ## Origin and license
 
