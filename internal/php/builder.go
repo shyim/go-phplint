@@ -1,10 +1,11 @@
-package php8
+package php
 
 import (
 	"bytes"
+	"strings"
 
-	"github.com/shyim/go-phplint/internal/posbuilder"
 	"github.com/shyim/go-phplint/internal/ast"
+	"github.com/shyim/go-phplint/internal/posbuilder"
 	"github.com/shyim/go-phplint/internal/position"
 	"github.com/shyim/go-phplint/internal/token"
 )
@@ -469,6 +470,12 @@ func (b *Builder) NewIdentifier(
 func (b *Builder) NewName(
 	NameTkn *token.Token,
 ) *ast.Name {
+	if !b.Parser.fidelity {
+		return &ast.Name{
+			Position: b.Pos.NewTokenPosition(NameTkn),
+			Value:    NameTkn.Value,
+		}
+	}
 	return &ast.Name{
 		Position: b.Pos.NewTokenPosition(NameTkn),
 		Parts: []ast.Vertex{
@@ -484,6 +491,12 @@ func (b *Builder) NewName(
 func (b *Builder) NewNameQualified(
 	NameTkn *token.Token,
 ) *ast.Name {
+	if !b.Parser.fidelity {
+		return &ast.Name{
+			Position: b.Pos.NewTokenPosition(NameTkn),
+			Value:    NameTkn.Value,
+		}
+	}
 	name := b.parseNameToken(NameTkn)
 
 	return &ast.Name{
@@ -496,12 +509,24 @@ func (b *Builder) NewNameQualified(
 func (b *Builder) NewNameFullyQualified(
 	NameTkn *token.Token,
 ) *ast.NameFullyQualified {
+	if !b.Parser.fidelity {
+		return &ast.NameFullyQualified{
+			Position: b.Pos.NewTokenPosition(NameTkn),
+			Value:    NameTkn.Value,
+		}
+	}
 	return b.parseNameFullyQualifiedToken(NameTkn)
 }
 
 func (b *Builder) NewNameRelative(
 	NameTkn *token.Token,
 ) *ast.NameRelative {
+	if !b.Parser.fidelity {
+		return &ast.NameRelative{
+			Position: b.Pos.NewTokenPosition(NameTkn),
+			Value:    NameTkn.Value,
+		}
+	}
 	return b.parseNameRelativeToken(NameTkn)
 }
 
@@ -528,19 +553,18 @@ func (b *Builder) NewMethodCall(
 	Expr ast.Vertex,
 	ObjectOperatorTkn *token.Token,
 	PropertyName ast.Vertex,
-	ArgList ast.Vertex,
+	args delimited,
 ) *ast.ExprMethodCall {
-	argumentList := ArgList.(*ArgumentList)
 	methodCall := &ast.ExprMethodCall{
-		Position:            b.Pos.NewNodesPosition(Expr, ArgList),
+		Position:            b.Pos.NewNodeTokenPosition(Expr, args.close),
 		Var:                 Expr,
 		ObjectOperatorTkn:   ObjectOperatorTkn,
 		Method:              PropertyName,
-		OpenParenthesisTkn:  argumentList.OpenParenthesisTkn,
-		Args:                argumentList.Arguments,
-		SeparatorTkns:       argumentList.SeparatorTkns,
-		EllipsisTkn:         argumentList.EllipsisTkn,
-		CloseParenthesisTkn: argumentList.CloseParenthesisTkn,
+		OpenParenthesisTkn:  args.open,
+		Args:                args.items,
+		SeparatorTkns:       args.seps,
+		EllipsisTkn:         args.extra,
+		CloseParenthesisTkn: args.close,
 	}
 
 	if brackets, ok := PropertyName.(*ParserBrackets); ok {
@@ -556,19 +580,18 @@ func (b *Builder) NewNullsafeMethodCall(
 	Expr ast.Vertex,
 	ObjectOperatorTkn *token.Token,
 	PropertyName ast.Vertex,
-	ArgList ast.Vertex,
+	args delimited,
 ) *ast.ExprNullsafeMethodCall {
-	argumentList := ArgList.(*ArgumentList)
 	methodCall := &ast.ExprNullsafeMethodCall{
-		Position:            b.Pos.NewNodesPosition(Expr, ArgList),
+		Position:            b.Pos.NewNodeTokenPosition(Expr, args.close),
 		Var:                 Expr,
 		ObjectOperatorTkn:   ObjectOperatorTkn,
 		Method:              PropertyName,
-		OpenParenthesisTkn:  argumentList.OpenParenthesisTkn,
-		Args:                argumentList.Arguments,
-		SeparatorTkns:       argumentList.SeparatorTkns,
-		EllipsisTkn:         argumentList.EllipsisTkn,
-		CloseParenthesisTkn: argumentList.CloseParenthesisTkn,
+		OpenParenthesisTkn:  args.open,
+		Args:                args.items,
+		SeparatorTkns:       args.seps,
+		EllipsisTkn:         args.extra,
+		CloseParenthesisTkn: args.close,
 	}
 
 	if brackets, ok := PropertyName.(*ParserBrackets); ok {
@@ -997,23 +1020,22 @@ func (b *Builder) NewParameter(
 
 func (b *Builder) NewAttribute(
 	Name ast.Vertex,
-	ArgList ast.Vertex,
+	args delimited,
 ) *ast.Attribute {
-	if ArgList == nil {
+	if args.open == nil {
 		return &ast.Attribute{
 			Position: b.Pos.NewNodePosition(Name),
 			Name:     Name,
 		}
 	}
 
-	argList := ArgList.(*ArgumentList)
 	return &ast.Attribute{
-		Position:            b.Pos.NewNodeTokenPosition(Name, argList.CloseParenthesisTkn),
+		Position:            b.Pos.NewNodeTokenPosition(Name, args.close),
 		Name:                Name,
-		OpenParenthesisTkn:  argList.OpenParenthesisTkn,
-		Args:                argList.Arguments,
-		SeparatorTkns:       argList.SeparatorTkns,
-		CloseParenthesisTkn: argList.CloseParenthesisTkn,
+		OpenParenthesisTkn:  args.open,
+		Args:                args.items,
+		SeparatorTkns:       args.seps,
+		CloseParenthesisTkn: args.close,
 	}
 }
 
@@ -1097,7 +1119,7 @@ func (b *Builder) NewAnonClass(
 	AttrGroups []ast.Vertex,
 	ClassTkn *token.Token,
 
-	ArgList ast.Vertex,
+	ArgList delimited,
 
 	ExtendsFrom ast.Vertex,
 	ImplementsList ast.Vertex,
@@ -1118,16 +1140,14 @@ func (b *Builder) NewAnonClass(
 		CloseCurlyBracketTkn,
 	)
 
-	if ArgList == nil {
+	if ArgList.open == nil {
 		return class
 	}
 
-	argList := ArgList.(*ArgumentList)
-
-	class.OpenParenthesisTkn = argList.OpenParenthesisTkn
-	class.Args = argList.Arguments
-	class.SeparatorTkns = argList.SeparatorTkns
-	class.CloseParenthesisTkn = argList.CloseParenthesisTkn
+	class.OpenParenthesisTkn = ArgList.open
+	class.Args = ArgList.items
+	class.SeparatorTkns = ArgList.seps
+	class.CloseParenthesisTkn = ArgList.close
 
 	return class
 }
@@ -1292,20 +1312,15 @@ func (b *Builder) NewFunction(
 	AmpersandTkn *token.Token,
 	Name *token.Token,
 	OpenParenthesisTkn *token.Token,
-	Params ast.Vertex,
+	Params delimited,
 	CloseParenthesisTkn *token.Token,
 	RetType ast.Vertex,
 	OpenCurlyBracketTkn *token.Token,
 	Stmts []ast.Vertex,
 	CloseCurlyBracketTkn *token.Token,
 ) *ast.StmtFunction {
-	var params []ast.Vertex
-	var sepTkns []*token.Token
-	if Params != nil {
-		paramsList := Params.(*ParserSeparatedList)
-		params = paramsList.Items
-		sepTkns = paramsList.SeparatorTkns
-	}
+	params := Params.items
+	sepTkns := Params.seps
 
 	returnType := RetType.(*ReturnType)
 
@@ -1329,6 +1344,15 @@ func (b *Builder) NewFunction(
 		Stmts:                Stmts,
 		CloseCurlyBracketTkn: CloseCurlyBracketTkn,
 	}
+}
+
+func (b *Builder) NewPropertyHook(final, byRef, name *token.Token, tail ast.PropertyHook) ast.PropertyHook {
+	if name != nil {
+		tail.Name = strings.ToLower(string(name.Value))
+	}
+	tail.Final = final != nil
+	tail.ByRef = byRef != nil
+	return tail
 }
 
 func (b *Builder) NewPropertyList(
@@ -1363,10 +1387,11 @@ func (b *Builder) NewClassConstList(
 	AttrGroups []ast.Vertex,
 	Modifiers []ast.Vertex,
 	ConstTkn *token.Token,
-	ConstList ast.Vertex,
+	ConstList delimited,
 	SemiColonTkn *token.Token,
 ) *ast.StmtClassConstList {
-	consts, sepTkns := b.SeparatedListItems(ConstList)
+	consts := ConstList.items
+	sepTkns := ConstList.seps
 
 	var pos *position.Position
 
@@ -1395,14 +1420,15 @@ func (b *Builder) NewClassMethod(
 	Name *token.Token,
 
 	OpenParenthesisTkn *token.Token,
-	Params ast.Vertex,
+	Params delimited,
 	CloseParenthesisTkn *token.Token,
 
 	RetType ast.Vertex,
 
 	Stmt ast.Vertex,
 ) *ast.StmtClassMethod {
-	params, sepTkns := b.SeparatedListItems(Params)
+	params := Params.items
+	sepTkns := Params.seps
 	returnType := RetType.(*ReturnType)
 
 	var pos *position.Position

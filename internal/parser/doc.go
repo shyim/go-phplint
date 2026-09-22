@@ -23,13 +23,13 @@ Package usage example:
 
 		var parserErrors []*errors.Error
 		errorHandler := func(e *errors.Error) {
-			parsmakeerErrors = append(parserErrors, e)
+			parserErrors = append(parserErrors, e)
 		}
 
 		// Parse
 
 		rootNode, err := parser.Parse(src, conf.Config{
-			Version:          &version.Version{Major: 5, Minor: 6},
+			Version:          &version.Version{Major: 8, Minor: 4},
 			ErrorHandlerFunc: errorHandler,
 		})
 

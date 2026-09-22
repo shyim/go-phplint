@@ -1,6 +1,7 @@
 package phplint
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -116,6 +117,33 @@ func TestLintBasicSyntaxAndCompileErrors(t *testing.T) {
 				t.Fatalf("Lint() diagnostics = %#v, want phrase %q", diagnostics, test.wantPhrase)
 			}
 		})
+	}
+}
+
+func TestLintReportsEachStatementSyntaxError(t *testing.T) {
+	t.Parallel()
+
+	diagnostics, err := Lint(
+		"broken.php",
+		[]byte("<?php\n$a = ;\n$b = ;\n"),
+		Options{PHPVersion: PHP84},
+	)
+	if err != nil {
+		t.Fatalf("Lint() error = %v", err)
+	}
+
+	var parseDiagnostics []Diagnostic
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Phase != PhaseParse {
+			continue
+		}
+		if strings.Contains(diagnostic.Message, "T_") {
+			t.Fatalf("syntax diagnostic %q contains a raw token name", diagnostic.Message)
+		}
+		parseDiagnostics = append(parseDiagnostics, diagnostic)
+	}
+	if len(parseDiagnostics) < 2 {
+		t.Fatalf("Lint() parse diagnostics = %#v, want two statement errors", diagnostics)
 	}
 }
 
@@ -582,6 +610,644 @@ func TestSemiReservedMethodNamesAreNotOperators(t *testing.T) {
 				if len(diagnostics) != 0 {
 					t.Fatalf("Lint(PHP %s) diagnostics = %#v, want none", version, diagnostics)
 				}
+			}
+		})
+	}
+}
+
+func TestAsymmetricVisibilityPlacement(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		source     string
+		wantPhrase string
+		wantParse  bool
+		version    Version
+	}{
+		{
+			name:   "property",
+			source: "<?php class A { public(set) string $x; }",
+		},
+		{
+			name:   "mixed case set",
+			source: "<?php class A { public(Set) string $x; }",
+		},
+		{
+			name:   "constructor promotion",
+			source: "<?php class A { function __construct(public(set) int $x) {} }",
+		},
+		{
+			name:       "variadic constructor promotion",
+			source:     "<?php class A { function __construct(public(set) int ...$x) {} }",
+			wantPhrase: "variadic",
+		},
+		{
+			name:       "method",
+			source:     "<?php class A { public(set) function foo() {} }",
+			wantPhrase: "on a method",
+		},
+		{
+			name:       "class constant",
+			source:     "<?php class A { public(set) const X = 1; }",
+			wantPhrase: "on a class constant",
+		},
+		{
+			name:       "function parameter",
+			source:     "<?php function foo(public(set) int $x) {}",
+			wantPhrase: "promoted properties",
+		},
+		{
+			name:       "method parameter",
+			source:     "<?php class A { function foo(public(set) int $x) {} }",
+			wantPhrase: "promoted properties",
+		},
+		{
+			name:       "trait alias",
+			source:     "<?php class A { use T { foo as public(set); } }",
+			wantPhrase: "on a method",
+		},
+		{
+			name:       "unknown operation",
+			source:     "<?php class A { public(foo) string $x; }",
+			wantPhrase: "syntax error",
+			wantParse:  true,
+		},
+		{
+			name:   "earlier parameter visibility",
+			source: "<?php class A { function __construct(private int $y, public(set) int $x) {} }",
+		},
+		{
+			name:   "method visibility is not the property",
+			source: "<?php class A { protected function __construct(public(set) int $x) {} }",
+		},
+		{
+			name:   "stronger set visibility",
+			source: "<?php class A { protected private(set) string $x; }",
+		},
+		{
+			name:       "set before a stronger get",
+			source:     "<?php class A { public(set) private string $x; }",
+			wantPhrase: "visibility",
+		},
+		{
+			name:       "promoted set before a stronger get",
+			source:     "<?php class A { function __construct(public(set) private int $x) {} }",
+			wantPhrase: "visibility",
+		},
+		{
+			name:       "untyped property",
+			source:     "<?php class A { public(set) $x; }",
+			wantPhrase: "must have type",
+		},
+		{
+			name:       "untyped combined visibility",
+			source:     "<?php class A { public private(set) $x; }",
+			wantPhrase: "must have type",
+		},
+		{
+			name:       "untyped promoted property",
+			source:     "<?php class A { function __construct(public(set) $x) {} }",
+			wantPhrase: "must have type",
+		},
+		{
+			name:       "two set visibilities",
+			source:     "<?php class A { public(set) private(set) string $x; }",
+			wantPhrase: "multiple access type modifiers",
+		},
+		{
+			name:       "static after set",
+			source:     "<?php class A { public(set) static string $x; }",
+			wantPhrase: "static",
+		},
+		{
+			name:    "static after set on 8.5",
+			source:  "<?php class A { public(set) static string $x; }",
+			version: PHP85,
+		},
+		{
+			name:   "dnf property",
+			source: "<?php class A { public (A&B)|C $x; }",
+		},
+		{
+			name:   "dnf promoted property",
+			source: "<?php class A { function __construct(public (A&B)|C $x) {} }",
+		},
+		{
+			name:       "bare parenthesized intersection property",
+			source:     "<?php class A { public (A&B) $x; }",
+			wantPhrase: "syntax error",
+			wantParse:  true,
+		},
+		{
+			name:       "bare parenthesized intersection parameter",
+			source:     "<?php function f((A&B) $x) {}",
+			wantPhrase: "syntax error",
+			wantParse:  true,
+		},
+		{
+			name:   "method call named public",
+			source: "<?php class A { function public($x) {} } $a = new A; $a->public(set);",
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			version := test.version
+			if version == 0 {
+				version = PHP84
+			}
+			diagnostics, err := Lint(
+				"visibility.php",
+				[]byte(test.source),
+				Options{PHPVersion: version},
+			)
+			if err != nil {
+				t.Fatalf("Lint() error = %v", err)
+			}
+			for _, diagnostic := range diagnostics {
+				if strings.Contains(diagnostic.Message, "T_") {
+					t.Fatalf("diagnostic %q contains a raw token name", diagnostic.Message)
+				}
+			}
+			if test.wantPhrase == "" {
+				if len(diagnostics) != 0 {
+					t.Fatalf("Lint() diagnostics = %#v, want none", diagnostics)
+				}
+				return
+			}
+			if !diagnosticsContain(diagnostics, test.wantPhrase) {
+				t.Fatalf("Lint() diagnostics = %#v, want phrase %q", diagnostics, test.wantPhrase)
+			}
+			if test.wantParse {
+				for _, diagnostic := range diagnostics {
+					if diagnostic.Phase == PhaseParse && diagnosticsContain([]Diagnostic{diagnostic}, test.wantPhrase) {
+						return
+					}
+				}
+				t.Fatalf("Lint() diagnostics = %#v, want a parse diagnostic", diagnostics)
+			}
+		})
+	}
+}
+
+func TestDNFTypeDiagnosticOnce(t *testing.T) {
+	t.Parallel()
+
+	diagnostics, err := Lint(
+		"dnf.php",
+		[]byte("<?php function f((A&B)|C $x): void {}"),
+		Options{PHPVersion: PHP81},
+	)
+	if err != nil {
+		t.Fatalf("Lint() error = %v", err)
+	}
+
+	matches := 0
+	for _, diagnostic := range diagnostics {
+		if strings.Contains(diagnostic.Message, "disjunctive normal form types") {
+			matches++
+		}
+	}
+	if matches != 1 {
+		t.Fatalf("Lint() diagnostics = %#v, want one disjunctive normal form diagnostic", diagnostics)
+	}
+
+	bitwise, err := Lint(
+		"bitwise.php",
+		[]byte("<?php $x = (A & B) | C;"),
+		Options{PHPVersion: PHP81},
+	)
+	if err != nil {
+		t.Fatalf("Lint() error = %v", err)
+	}
+	if diagnosticsContain(bitwise, "disjunctive normal form") {
+		t.Fatalf("Lint() diagnostics = %#v, bitwise expression reported as a DNF type", bitwise)
+	}
+
+	clean, err := Lint(
+		"dnf.php",
+		[]byte("<?php function f((A&B)|C $x): void {}"),
+		Options{PHPVersion: PHP82},
+	)
+	if err != nil {
+		t.Fatalf("Lint() error = %v", err)
+	}
+	if len(clean) != 0 {
+		t.Fatalf("Lint() diagnostics = %#v, want none for a union member", clean)
+	}
+}
+
+func TestPropertyHookConstraints(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		source     string
+		wantPhrase string
+	}{
+		{
+			name:       "final abstract hook",
+			source:     "<?php abstract class A { abstract public string $x { final get; } }",
+			wantPhrase: "abstract and final",
+		},
+		{
+			name:       "final interface hook",
+			source:     "<?php interface I { public string $x { final get; } }",
+			wantPhrase: "abstract and final",
+		},
+		{
+			name:       "final abstract hook after a semicolon hook",
+			source:     "<?php abstract class A { abstract public string $x { get; final set; } }",
+			wantPhrase: "abstract and final",
+		},
+		{
+			name:   "final hook with body",
+			source: "<?php class A { public string $x { final get => 1; } }",
+		},
+		{
+			name:   "final body beside an abstract hook",
+			source: "<?php abstract class A { abstract public string $x { get; final set => $value; } }",
+		},
+		{
+			name:   "final body before an abstract hook",
+			source: "<?php abstract class A { abstract public string $x { final get => 1; set; } }",
+		},
+		{
+			name:   "intersection set parameter",
+			source: "<?php class A { public A&B $x { set(A&B $value) => $value; } }",
+		},
+		{
+			name:   "dnf set parameter",
+			source: "<?php class A { public (A&B)|C $x { set((A&B)|C $value) => $value; } }",
+		},
+		{
+			name:       "by-ref set parameter",
+			source:     "<?php class A { public string $x { set(string &$value) => $value; } }",
+			wantPhrase: "non-reference",
+		},
+		{
+			name:       "protected interface hook",
+			source:     "<?php interface I { protected string $x { get; } }",
+			wantPhrase: "protected or private",
+		},
+		{
+			name:       "private interface hook",
+			source:     "<?php interface I { private string $x { get; } }",
+			wantPhrase: "protected or private",
+		},
+		{
+			name:   "public interface hook",
+			source: "<?php interface I { public string $x { get; } }",
+		},
+		{
+			name:       "asymmetric get-only virtual property",
+			source:     "<?php class A { public private(set) string $x { get => 1; } }",
+			wantPhrase: "virtual property",
+		},
+		{
+			name:   "asymmetric property with set hook",
+			source: "<?php class A { public private(set) string $x { get => 1; set => $value; } }",
+		},
+		{
+			name:   "asymmetric backed property",
+			source: "<?php class A { public private(set) string $x = \"a\" { get => $this->x; } }",
+		},
+		{
+			name:   "public(set) get-only",
+			source: "<?php class A { public(set) string $x { get => 1; } }",
+		},
+		{
+			name:   "equivalent public set get-only",
+			source: "<?php class A { public public(set) string $x { get => 1; } }",
+		},
+		{
+			name:   "equivalent private set get-only",
+			source: "<?php class A { private private(set) string $x { get => 1; } }",
+		},
+		{
+			name:   "get reads property",
+			source: "<?php class A { public private(set) string $x { get => $this->x; } }",
+		},
+		{
+			name:   "get block reads property",
+			source: "<?php class A { public private(set) string $x { get { return $this->x; } } }",
+		},
+		{
+			name:   "nullsafe read",
+			source: "<?php class A { public private(set) string $x { get => $this?->x; } }",
+		},
+		{
+			name:       "wrong case read is virtual",
+			source:     "<?php class A { public private(set) string $x { get => $this->X; } }",
+			wantPhrase: "read-only virtual property",
+		},
+		{
+			name:       "closure read is virtual",
+			source:     "<?php class A { public private(set) string $x { get { return (function () { return $this->x; })(); } } }",
+			wantPhrase: "read-only virtual property",
+		},
+		{
+			name:       "arrow read is virtual",
+			source:     "<?php class A { public private(set) string $x { get => (fn () => $this->x)(); } }",
+			wantPhrase: "read-only virtual property",
+		},
+		{
+			name:       "write-only virtual set",
+			source:     "<?php class A { public private(set) string $x { set { $GLOBALS[\"a\"] = $value; } } }",
+			wantPhrase: "write-only virtual property",
+		},
+		{
+			name:   "short set",
+			source: "<?php class A { public private(set) string $x { set => $value; } }",
+		},
+		{
+			name:   "set writes property",
+			source: "<?php class A { public private(set) string $x { set { $this->x = $value; } } }",
+		},
+		{
+			name:       "virtual default",
+			source:     "<?php class A { public private(set) string $x = \"a\" { get => 1; } }",
+			wantPhrase: "default value for virtual hooked property",
+		},
+		{
+			name:       "virtual default without asymmetric visibility",
+			source:     "<?php class A { public string $x = \"a\" { get => 1; } }",
+			wantPhrase: "default value for virtual hooked property",
+		},
+		{
+			name:   "interface protected set",
+			source: "<?php interface I { protected(set) string $x { get; set; } }",
+		},
+		{
+			name:   "interface private set",
+			source: "<?php interface I { private(set) string $x { get; set; } }",
+		},
+		{
+			name:   "interface public and protected set",
+			source: "<?php interface I { public protected(set) string $x { get; set; } }",
+		},
+		{
+			name:   "interface public and private set",
+			source: "<?php interface I { public private(set) string $x { get; set; } }",
+		},
+		{
+			name:       "by-ref get with set hook",
+			source:     "<?php class A { public string $x { &get => $this->x; set => $value; } }",
+			wantPhrase: "may not return by reference",
+		},
+		{
+			name:   "by-ref get on virtual property",
+			source: "<?php class A { public string $x { &get => 1; set { $foo = $value; } } }",
+		},
+		{
+			name:       "abstract asymmetric semicolon get",
+			source:     "<?php abstract class A { abstract public private(set) string $x { get; } }",
+			wantPhrase: "read-only virtual property",
+		},
+		{
+			name:       "abstract asymmetric by-ref get",
+			source:     "<?php abstract class A { abstract public private(set) string $x { &get; } }",
+			wantPhrase: "read-only virtual property",
+		},
+		{
+			name:       "nested function does not back the property",
+			source:     "<?php class A { public private(set) string $x { get { function f() { return $this->x; } return 1; } } }",
+			wantPhrase: "read-only virtual property",
+		},
+		{
+			name:   "parenthesized this",
+			source: "<?php class A { public private(set) string $x { get => ($this)->x; } }",
+		},
+		{
+			name:   "double parenthesized this",
+			source: "<?php class A { public private(set) string $x { get => (($this))->x; } }",
+		},
+		{
+			name:   "parenthesized nullsafe this",
+			source: "<?php class A { public private(set) string $x { get => ($this)?->x; } }",
+		},
+		{
+			name:   "constant computed name",
+			source: "<?php class A { public private(set) string $x { get => $this->{\"x\"}; } }",
+		},
+		{
+			name:   "constant computed nullsafe name",
+			source: "<?php class A { public private(set) string $x { get => $this?->{\"x\"}; } }",
+		},
+		{
+			name:   "single quoted computed name",
+			source: "<?php class A { public private(set) string $x { get => $this->{'x'}; } }",
+		},
+		{
+			name:       "variable computed name",
+			source:     "<?php class A { public private(set) string $x { get => $this->{$n}; } }",
+			wantPhrase: "read-only virtual property",
+		},
+		{
+			name:   "interpolated property in short hook",
+			source: "<?php class A { public string $x { get => \"{$this->x}\"; } }",
+		},
+		{
+			name:   "interpolated property in hook block",
+			source: "<?php class A { public string $x { get { return \"{$this->x}\"; } } }",
+		},
+		{
+			name:   "dollar curly property in short hook",
+			source: "<?php class A { public string $x { get => \"${this->x}\"; } }",
+		},
+		{
+			name:   "interpolated property backs asymmetric hook",
+			source: "<?php class A { public private(set) string $x { get => \"{$this->x}\"; } }",
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			diagnostics, err := Lint(
+				"hooks.php",
+				[]byte(test.source),
+				Options{PHPVersion: PHP84},
+			)
+			if err != nil {
+				t.Fatalf("Lint() error = %v", err)
+			}
+			if test.wantPhrase == "" {
+				if len(diagnostics) != 0 {
+					t.Fatalf("Lint() diagnostics = %#v, want none", diagnostics)
+				}
+				return
+			}
+			if !diagnosticsContain(diagnostics, test.wantPhrase) {
+				t.Fatalf("Lint() diagnostics = %#v, want phrase %q", diagnostics, test.wantPhrase)
+			}
+		})
+	}
+}
+
+func TestAbstractAndInterfacePropertyHooks(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		source     string
+		wantPhrase string
+	}{
+		{
+			name:   "abstract semicolon hook",
+			source: "<?php abstract class A { abstract public string $x { set; } }",
+		},
+		{
+			name:   "interface semicolon hook",
+			source: "<?php interface I { public string $x { get; } }",
+		},
+		{
+			name:   "abstract property with one semicolon hook",
+			source: "<?php abstract class A { abstract public string $x { get; set => $value; } }",
+		},
+		{
+			name:       "interface hook body",
+			source:     "<?php interface I { public string $x { get => 1; } }",
+			wantPhrase: "cannot have a body",
+		},
+		{
+			name:       "abstract property without semicolon hook",
+			source:     "<?php abstract class A { abstract public string $x { set => $value; } }",
+			wantPhrase: "at least one abstract hook",
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			diagnostics, err := Lint(
+				"hooks.php",
+				[]byte(test.source),
+				Options{PHPVersion: PHP84},
+			)
+			if err != nil {
+				t.Fatalf("Lint() error = %v", err)
+			}
+			if test.wantPhrase == "" {
+				if len(diagnostics) != 0 {
+					t.Fatalf("Lint() diagnostics = %#v, want none", diagnostics)
+				}
+				return
+			}
+			if !diagnosticsContain(diagnostics, test.wantPhrase) {
+				t.Fatalf("Lint() diagnostics = %#v, want phrase %q", diagnostics, test.wantPhrase)
+			}
+		})
+	}
+}
+
+func TestSetVisibilityIsOnlyAModifier(t *testing.T) {
+	t.Parallel()
+
+	patterns := []struct {
+		name   string
+		source string
+	}{
+		{name: "enum case", source: "<?php enum E { case %s(set); }"},
+		{name: "class constant name", source: "<?php class A { const %s(set) = 1; }"},
+		{name: "static fetch", source: "<?php class A { const X = 1; } echo A::%s(set);"},
+		{name: "trait method", source: "<?php class A { use T { %s(set) as foo; } }"},
+		{name: "namespace", source: "<?php namespace %s(set);"},
+		{name: "method name", source: "<?php class A { function %s(set)() {} }"},
+		{name: "hook name", source: "<?php class A { public string $x { %s(set); } }"},
+	}
+	for _, visibility := range []string{"public", "protected", "private"} {
+		for _, pattern := range patterns {
+			visibility, pattern := visibility, pattern
+			t.Run(fmt.Sprintf("%s %s", pattern.name, visibility), func(t *testing.T) {
+				t.Parallel()
+				diagnostics, err := Lint(
+					"name.php",
+					[]byte(fmt.Sprintf(pattern.source, visibility)),
+					Options{PHPVersion: PHP84},
+				)
+				if err != nil {
+					t.Fatalf("Lint() error = %v", err)
+				}
+				if !diagnosticsContain(diagnostics, "syntax error") {
+					t.Fatalf("Lint() diagnostics = %#v, want a syntax error", diagnostics)
+				}
+				for _, diagnostic := range diagnostics {
+					if diagnostic.Phase == PhaseParse && strings.Contains(diagnostic.Message, "T_") {
+						t.Fatalf("diagnostic %q contains a raw token name", diagnostic.Message)
+					}
+				}
+			})
+		}
+	}
+
+	// Before PHP 8.4, public(set) is not a modifier. A::public(set) is a static call.
+	for _, version := range []Version{PHP74, PHP83} {
+		for _, visibility := range []string{"public", "protected", "private"} {
+			version, visibility := version, visibility
+			t.Run(fmt.Sprintf("static fetch %s %s", visibility, version), func(t *testing.T) {
+				t.Parallel()
+				source := fmt.Sprintf("<?php class A { const X = 1; } echo A::%s(set);", visibility)
+				diagnostics, err := Lint("name.php", []byte(source), Options{PHPVersion: version})
+				if err != nil {
+					t.Fatalf("Lint() error = %v", err)
+				}
+				if len(diagnostics) != 0 {
+					t.Fatalf("Lint() diagnostics = %#v, want none", diagnostics)
+				}
+			})
+		}
+	}
+
+	accepts := []struct {
+		name   string
+		source string
+	}{
+		{name: "property", source: "<?php class A { public(set) string $x; }"},
+		{name: "method call", source: "<?php class A { function public($x) {} } $a = new A; $a->public(set);"},
+		{name: "static call argument", source: "<?php class A { static function public($n) {} } A::public(1);"},
+		{name: "abstract hooked property", source: "<?php abstract class A { abstract public string $x { set; } }"},
+		{name: "interface hooked property", source: "<?php interface I { public string $x { get; } }"},
+	}
+	rejects := []struct {
+		name       string
+		source     string
+		wantPhrase string
+	}{
+		{name: "unhooked abstract property", source: "<?php abstract class A { abstract public string $x; }", wantPhrase: "cannot be abstract"},
+		{name: "unhooked interface property", source: "<?php interface I { public string $x; }", wantPhrase: "may not declare properties"},
+	}
+	for _, test := range accepts {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			diagnostics, err := Lint("ok.php", []byte(test.source), Options{PHPVersion: PHP84})
+			if err != nil {
+				t.Fatalf("Lint() error = %v", err)
+			}
+			if len(diagnostics) != 0 {
+				t.Fatalf("Lint() diagnostics = %#v, want none", diagnostics)
+			}
+		})
+	}
+	for _, test := range rejects {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			diagnostics, err := Lint("bad.php", []byte(test.source), Options{PHPVersion: PHP84})
+			if err != nil {
+				t.Fatalf("Lint() error = %v", err)
+			}
+			if !diagnosticsContain(diagnostics, test.wantPhrase) {
+				t.Fatalf("Lint() diagnostics = %#v, want phrase %q", diagnostics, test.wantPhrase)
 			}
 		})
 	}

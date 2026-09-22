@@ -8,6 +8,7 @@ import (
 	"github.com/shyim/go-phplint/internal/conf"
 	phperrors "github.com/shyim/go-phplint/internal/errors"
 	phpparser "github.com/shyim/go-phplint/internal/parser"
+	"github.com/shyim/go-phplint/internal/token"
 )
 
 // Options configures a lint operation.
@@ -31,12 +32,11 @@ func Lint(filename string, source []byte, options Options) (diagnostics []Diagno
 		}
 	}()
 
-	parseSource, modernDiagnostics := prepareSource(source, options.PHPVersion, filename)
-	diagnostics = append(diagnostics, modernDiagnostics...)
-
+	var tokens []*token.Token
 	var parserDiagnostics []Diagnostic
-	root, parseErr := phpparser.Parse(parseSource, conf.Config{
+	root, parseErr := phpparser.Parse(source, conf.Config{
 		Version: options.PHPVersion.internal(),
+		Tokens:  &tokens,
 		ErrorHandlerFunc: func(parseError *phperrors.Error) {
 			start, end := positionFromInternal(parseError.Pos)
 			parserDiagnostics = append(parserDiagnostics, Diagnostic{
@@ -52,6 +52,7 @@ func Lint(filename string, source []byte, options Options) (diagnostics []Diagno
 		return nil, fmt.Errorf("initialize PHP %s parser: %w", options.PHPVersion, parseErr)
 	}
 
+	diagnostics = append(diagnostics, prepareSource(source, tokens, options.PHPVersion, filename)...)
 	diagnostics = append(diagnostics, parserDiagnostics...)
 
 	if len(parserDiagnostics) == 0 && root != nil {

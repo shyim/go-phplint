@@ -1,12 +1,12 @@
-package php8_test
+package php_test
 
 import (
 	"testing"
 
-	"github.com/shyim/go-phplint/internal/php8"
-	"github.com/shyim/go-phplint/internal/tester"
 	"github.com/shyim/go-phplint/internal/conf"
+	"github.com/shyim/go-phplint/internal/php"
 	"github.com/shyim/go-phplint/internal/position"
+	"github.com/shyim/go-phplint/internal/tester"
 	"github.com/shyim/go-phplint/internal/token"
 	"gotest.tools/assert"
 )
@@ -194,7 +194,7 @@ func TestCommentEnd2(t *testing.T) {
 		},
 	}
 
-	lexer := php8.NewLexer([]byte(src), conf.Config{})
+	lexer := php.NewLexer([]byte(src), conf.Config{Fidelity: true})
 
 	tkn := lexer.Lex()
 
@@ -225,7 +225,7 @@ func TestCommentEnd3(t *testing.T) {
 		},
 	}
 
-	lexer := php8.NewLexer([]byte(src), conf.Config{})
+	lexer := php.NewLexer([]byte(src), conf.Config{Fidelity: true})
 
 	tkn := lexer.Lex()
 
@@ -251,7 +251,7 @@ func TestAttribute(t *testing.T) {
 		},
 	}
 
-	lexer := php8.NewLexer([]byte(src), conf.Config{})
+	lexer := php.NewLexer([]byte(src), conf.Config{Fidelity: true})
 
 	tkn := lexer.Lex()
 
@@ -272,11 +272,11 @@ func TestNamespaceFullyQualifiedTokens(t *testing.T) {
 	suite.Code = `<?php use \Foo;`
 	suite.Expected = []*token.Token{
 		{
-			ID:    php8.T_USE,
+			ID:    php.T_USE,
 			Value: []byte("use"),
 		},
 		{
-			ID:    php8.T_NAME_FULLY_QUALIFIED,
+			ID:    php.T_NAME_FULLY_QUALIFIED,
 			Value: []byte(`\Foo`),
 		},
 		{
@@ -293,11 +293,11 @@ func TestNamespaceFullyQualifiedWithKeywordsTokens(t *testing.T) {
 	suite.Code = `<?php use \Foo\match\fn;`
 	suite.Expected = []*token.Token{
 		{
-			ID:    php8.T_USE,
+			ID:    php.T_USE,
 			Value: []byte("use"),
 		},
 		{
-			ID:    php8.T_NAME_FULLY_QUALIFIED,
+			ID:    php.T_NAME_FULLY_QUALIFIED,
 			Value: []byte(`\Foo\match\fn`),
 		},
 		{
@@ -314,11 +314,11 @@ func TestNamespaceQualifiedTokens(t *testing.T) {
 	suite.Code = `<?php namespace Boo\Foo;`
 	suite.Expected = []*token.Token{
 		{
-			ID:    php8.T_NAMESPACE,
+			ID:    php.T_NAMESPACE,
 			Value: []byte("namespace"),
 		},
 		{
-			ID:    php8.T_NAME_QUALIFIED,
+			ID:    php.T_NAME_QUALIFIED,
 			Value: []byte(`Boo\Foo`),
 		},
 		{
@@ -335,7 +335,7 @@ func TestNamespaceRelativeTokens(t *testing.T) {
 	suite.Code = `<?php namespace\match;`
 	suite.Expected = []*token.Token{
 		{
-			ID:    php8.T_NAME_RELATIVE,
+			ID:    php.T_NAME_RELATIVE,
 			Value: []byte(`namespace\match`),
 		},
 		{
@@ -360,36 +360,36 @@ $a;
 `
 	suite.Expected = []*token.Token{
 		{
-			ID:    php8.T_VARIABLE,
+			ID:    php.T_VARIABLE,
 			Value: []byte(`$a`),
 			FreeFloating: []*token.Token{
 				{
-					ID:       php8.T_OPEN_TAG,
+					ID:       php.T_OPEN_TAG,
 					Value:    []byte("<?php"),
 					Position: &position.Position{StartLine: 1, EndLine: 1, EndPos: 5, StartCol: 0, EndCol: 5},
 				},
 				{
-					ID:       php8.T_WHITESPACE,
+					ID:       php.T_WHITESPACE,
 					Value:    []byte("\n"),
 					Position: &position.Position{StartLine: 1, EndLine: 1, StartPos: 5, EndPos: 6, StartCol: 5, EndCol: 6},
 				},
 				{
-					ID:       php8.T_COMMENT,
+					ID:       php.T_COMMENT,
 					Value:    []byte("#\n"),
 					Position: &position.Position{StartLine: 2, EndLine: 2, StartPos: 6, EndPos: 8, StartCol: 0, EndCol: 2},
 				},
 				{
-					ID:       php8.T_COMMENT,
+					ID:       php.T_COMMENT,
 					Value:    []byte("# Hello\n"),
 					Position: &position.Position{StartLine: 3, EndLine: 3, StartPos: 8, EndPos: 16, StartCol: 0, EndCol: 8},
 				},
 				{
-					ID:       php8.T_COMMENT,
+					ID:       php.T_COMMENT,
 					Value:    []byte("#\n"),
 					Position: &position.Position{StartLine: 4, EndLine: 4, StartPos: 16, EndPos: 18, StartCol: 0, EndCol: 2},
 				},
 				{
-					ID:       php8.T_WHITESPACE,
+					ID:       php.T_WHITESPACE,
 					Value:    []byte("\n"),
 					Position: &position.Position{StartLine: 5, EndLine: 5, StartPos: 18, EndPos: 19, StartCol: 0, EndCol: 1},
 				},

@@ -7,9 +7,12 @@ selects the PHP language profile explicitly, so one executable can check code
 for PHP 7.2 through 7.4 or any PHP 8 minor from 8.0 through 8.6 without
 installing those PHP runtimes. PHP 8.6 support is currently a preview profile.
 
-The normal build is pure Go. The PHP lexer/parser sources are embedded in this
-repository, and the linter adds version gates and recoverable compile-time
-checks on top.
+The normal build is pure Go. A single unified PHP lexer/parser in
+`internal/php` accepts the full PHP 7/8 syntax superset for every supported
+profile, and the linter adds version gates and recoverable compile-time
+checks on top. Version-specific rejection lives in the lexer (reserved
+words, removed casts, heredoc rules, `#` comments), in a few
+version-conditional grammar actions, and in validation.
 
 ## Build
 
@@ -118,6 +121,26 @@ PHPLINT_PHP_BINARY=/opt/php/8.4/bin/php go test -run TestNativePHPOracle
 
 The CI oracle builds one Go test binary and runs it in official PHP CLI
 containers for every supported minor.
+
+The generated parser (`internal/php/php.go`) and scanner
+(`internal/php/scanner.go`) are checked in. To regenerate them after editing
+the grammars, install `goyacc` and `ragel` and run:
+
+```sh
+goyacc -o internal/php/php.go internal/php/php.y
+ragel -Z -G2 -o internal/php/scanner.go internal/php/scanner.rl
+```
+
+`goyacc` is `golang.org/x/tools/cmd/goyacc`. After it runs, set
+`yyInitialStackSize` to 128 and `yyErrorVerbose` to true in
+`internal/php/php.go`. Ragel must be invoked with `-Z` so the host language
+is Go. Keywords are classified in Go after an identifier match, not as
+case-folded literals in `scanner.rl`.
+
+Hand edits to the generated files must be mirrored in `php.y`/`scanner.rl`
+so regeneration preserves them. The version-conditional actions, the parser
+stack size, and verbose syntax errors are the intentional divergence from a
+plain regeneration.
 
 ## Benchmarks
 

@@ -39,7 +39,8 @@ func (p *ParserPrintTestSuite) Run(code string) {
 
 func (p *ParserPrintTestSuite) parse(src string) ast.Vertex {
 	config := conf.Config{
-		Version: &p.Version,
+		Fidelity: true,
+		Version:  &p.Version,
 	}
 
 	root, err := parser.Parse([]byte(src), config)

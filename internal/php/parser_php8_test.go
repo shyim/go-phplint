@@ -1,14 +1,14 @@
-package php8_test
+package php_test
 
 import (
 	"testing"
 
-	"github.com/shyim/go-phplint/internal/tester"
 	"github.com/shyim/go-phplint/internal/ast"
 	"github.com/shyim/go-phplint/internal/conf"
 	"github.com/shyim/go-phplint/internal/errors"
 	"github.com/shyim/go-phplint/internal/parser"
 	"github.com/shyim/go-phplint/internal/position"
+	"github.com/shyim/go-phplint/internal/tester"
 	"github.com/shyim/go-phplint/internal/token"
 	"github.com/shyim/go-phplint/internal/version"
 	"gotest.tools/assert"
@@ -1926,7 +1926,8 @@ new class (name: $a, $b, ...$c) {};
 `
 
 	config := conf.Config{
-		Version: &version.Version{Major: 8, Minor: 0},
+		Fidelity: true,
+		Version:  &version.Version{Major: 8, Minor: 0},
 	}
 
 	root, err := parser.Parse([]byte(suite.Code), config)
@@ -3019,20 +3020,16 @@ class Foo {
 
 	suite.Expected = []*errors.Error{
 		{
-			Msg: "syntax error: unexpected T_STATIC, expecting T_VARIABLE",
+			Msg: "syntax error: unexpected static, expecting variable",
 			Pos: position.NewPosition(2, 2, 18, 24, 1, 1),
 		},
 		{
-			Msg: "syntax error: unexpected T_STATIC, expecting T_VARIABLE",
+			Msg: "syntax error: unexpected static, expecting variable",
 			Pos: position.NewPosition(3, 3, 48, 54, 1, 1),
 		},
 		{
-			Msg: "syntax error: unexpected '|', expecting T_VARIABLE",
+			Msg: "syntax error: unexpected '|', expecting variable",
 			Pos: position.NewPosition(8, 8, 154, 155, 1, 1),
-		},
-		{
-			Msg: "syntax error: unexpected '}'",
-			Pos: position.NewPosition(10, 10, 182, 183, 1, 1),
 		},
 	}
 
@@ -3050,16 +3047,12 @@ function f(int|string|null $a) {} // ok
 
 	suite.Expected = []*errors.Error{
 		{
-			Msg: "syntax error: unexpected '|', expecting T_VARIABLE",
+			Msg: "syntax error: unexpected '|', expecting variable",
 			Pos: position.NewPosition(2, 2, 22, 23, 1, 1),
 		},
 		{
 			Msg: "syntax error: unexpected '('",
-			Pos: position.NewPosition(3, 3, 49, 50, 1, 1),
-		},
-		{
-			Msg: "syntax error: unexpected T_VARIABLE",
-			Pos: position.NewPosition(3, 3, 62, 64, 1, 1),
+			Pos: position.NewPosition(3, 3, 49, 50, 12, 13),
 		},
 	}
 
@@ -3320,7 +3313,6 @@ func TestUnionTypes(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -3415,7 +3407,6 @@ try {} catch (Exception) {}
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -3541,7 +3532,6 @@ try {} catch (Exception) {}
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -3950,7 +3940,6 @@ class Point {
 						},
 					},
 					Stmt: &ast.StmtStmtList{
-						Stmts: []ast.Vertex{},
 					},
 				},
 			},
@@ -4388,7 +4377,6 @@ class Point {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
 						CloseCurlyBracketTkn: &token.Token{
 							ID: token.ID(125),
 							Val: []byte("}"),
@@ -4519,7 +4507,6 @@ class Foo {}
 			Name: &ast.Identifier{
 				Val: []byte("Foo"),
 			},
-			Stmts: []ast.Vertex{},
 		},
 	},
 },`
@@ -4536,7 +4523,7 @@ use \ Foo \ Boo;
 
 	suite.Expected = []*errors.Error{
 		{
-			Msg: "syntax error: unexpected T_NS_SEPARATOR",
+			Msg: "syntax error: unexpected \\",
 			Pos: position.NewPosition(2, 2, 11, 12, 1, 1),
 		},
 	}
@@ -4553,7 +4540,7 @@ function f(\Foo \ Boo $a) {}
 
 	suite.Expected = []*errors.Error{
 		{
-			Msg: "syntax error: unexpected T_NS_SEPARATOR, expecting T_VARIABLE",
+			Msg: "syntax error: unexpected \\, expecting variable",
 			Pos: position.NewPosition(2, 2, 23, 24, 1, 1),
 		},
 	}

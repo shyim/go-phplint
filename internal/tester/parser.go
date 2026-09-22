@@ -35,12 +35,13 @@ func (p *ParserTestSuite) UsePHP8() {
 
 func (p *ParserTestSuite) Run() {
 	config := conf.Config{
-		Version: &p.Version,
+		Version:  &p.Version,
+		Fidelity: true,
 	}
 
 	actual, err := parser.Parse([]byte(p.Code), config)
 	if err != nil {
 		p.t.Fatalf("Error parse: %v", err)
 	}
-	assert.DeepEqual(p.t, p.Expected, actual)
+	assert.DeepEqual(p.t, p.Expected, actual, ignorePositionColumns)
 }

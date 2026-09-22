@@ -92,19 +92,19 @@ func (p *printer) printToken(t *token.Token, def []byte) {
 	for _, ff := range t.FreeFloating {
 		p.write(ff.Value)
 
-        // I believe doc comments have their newlines trimmed during parsing,
-        // Causing the output to look weird (like: "*/function" for example).
-        // Lets add a newline for now, as most doc comments are followed by a
-        // newline anyways.
+		// I believe doc comments have their newlines trimmed during parsing,
+		// Causing the output to look weird (like: "*/function" for example).
+		// Lets add a newline for now, as most doc comments are followed by a
+		// newline anyways.
 		if ff.ID == token.T_DOC_COMMENT {
 			p.write([]byte("\n"))
 
-            // Add indentation based on the indentation of the comment.
-            if len(ff.Value) > 4 {
-                for i := len(ff.Value)-4; ff.Value[i] == ' '; i-- {
-                    p.write([]byte(" "))
-                }
-            }
+			// Add indentation based on the indentation of the comment.
+			if len(ff.Value) > 4 {
+				for i := len(ff.Value) - 4; ff.Value[i] == ' '; i-- {
+					p.write([]byte(" "))
+				}
+			}
 		}
 	}
 	p.write(t.Value)
@@ -522,7 +522,7 @@ func (p *printer) StmtNamespace(n *ast.StmtNamespace) {
 	p.printToken(n.OpenCurlyBracketTkn, p.ifNodeList(n.Stmts, []byte("{")))
 	p.printList(n.Stmts)
 	p.printToken(n.CloseCurlyBracketTkn, p.ifNodeList(n.Stmts, []byte("}")))
-	p.printToken(n.SemiColonTkn, p.ifNotNodeList(n.Stmts, []byte(";")))
+	p.printToken(n.SemiColonTkn, p.ifNotToken(n.OpenCurlyBracketTkn, p.ifNotNodeList(n.Stmts, []byte(";"))))
 }
 
 func (p *printer) StmtNop(n *ast.StmtNop) {
@@ -1336,15 +1336,27 @@ func (p *printer) ScalarString(n *ast.ScalarString) {
 }
 
 func (p *printer) NameName(n *ast.Name) {
+	if len(n.Parts) == 0 {
+		p.write(n.Value)
+		return
+	}
 	p.printSeparatedList(n.Parts, n.SeparatorTkns, []byte("\\"))
 }
 
 func (p *printer) NameFullyQualified(n *ast.NameFullyQualified) {
+	if len(n.Parts) == 0 {
+		p.write(n.Value)
+		return
+	}
 	p.printToken(n.NsSeparatorTkn, []byte("\\"))
 	p.printSeparatedList(n.Parts, n.SeparatorTkns, []byte("\\"))
 }
 
 func (p *printer) NameRelative(n *ast.NameRelative) {
+	if len(n.Parts) == 0 {
+		p.write(n.Value)
+		return
+	}
 	p.printToken(n.NsTkn, []byte("namespace"))
 	p.printToken(n.NsSeparatorTkn, []byte("\\"))
 	p.printSeparatedList(n.Parts, n.SeparatorTkns, []byte("\\"))

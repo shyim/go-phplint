@@ -118,18 +118,13 @@ func (b *Builder) NewNodePosition(n ast.Vertex) *position.Position {
 	return pos
 }
 
-// NewTokenPosition returns new Position
+// NewTokenPosition returns the token position. A node whose span is exactly
+// that token shares the token's position instead of copying it.
 func (b *Builder) NewTokenPosition(t *token.Token) *position.Position {
-	pos := b.pool.Get()
-
-	pos.StartLine = t.Position.StartLine
-	pos.EndLine = t.Position.EndLine
-	pos.StartPos = t.Position.StartPos
-	pos.EndPos = t.Position.EndPos
-	pos.StartCol = t.Position.StartCol
-	pos.EndCol = t.Position.EndCol
-
-	return pos
+	if t != nil && t.Position != nil {
+		return t.Position
+	}
+	return b.pool.Get()
 }
 
 // NewTokensPosition returns new Position

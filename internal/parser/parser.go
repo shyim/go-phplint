@@ -3,8 +3,7 @@ package parser
 import (
 	"errors"
 
-	"github.com/shyim/go-phplint/internal/php7"
-	"github.com/shyim/go-phplint/internal/php8"
+	php "github.com/shyim/go-phplint/internal/php"
 	"github.com/shyim/go-phplint/internal/ast"
 	"github.com/shyim/go-phplint/internal/conf"
 	"github.com/shyim/go-phplint/internal/version"
@@ -26,16 +25,12 @@ func Parse(src []byte, config conf.Config) (ast.Vertex, error) {
 		config.Version = &version.Version{Major: 7, Minor: 4}
 	}
 
-	if config.Version.InPhp7Range() {
-		lexer := php7.NewLexer(src, config)
-		parser = php7.NewParser(lexer, config)
-		parser.Parse()
-		return parser.GetRootNode(), nil
-	}
-
-	if config.Version.InPhp8Range() {
-		lexer := php8.NewLexer(src, config)
-		parser = php8.NewParser(lexer, config)
+	// The unified parser accepts the full PHP 7/8 syntax superset for every
+	// supported profile. Version-specific rejection happens in the lexer
+	// (reserved words, removed casts, heredoc rules) and in validation.
+	if config.Version.InPhp7Range() || config.Version.InPhp8Range() {
+		lexer := php.NewLexer(src, config)
+		parser = php.NewParser(lexer, config)
 		parser.Parse()
 		return parser.GetRootNode(), nil
 	}

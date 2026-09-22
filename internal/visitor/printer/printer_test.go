@@ -3107,7 +3107,7 @@ func TestPrinterPrintStmtCaseEmpty(t *testing.T) {
 		Cond: &ast.ExprVariable{
 			Name: &ast.Identifier{Value: []byte("$a")},
 		},
-		Stmts: []ast.Vertex{},
+		Stmts: nil,
 	}
 	n.Accept(p)
 
@@ -3517,7 +3517,7 @@ func TestPrinterPrintStmtDefalutEmpty(t *testing.T) {
 
 	p := printer.NewPrinter(o).WithState(printer.PrinterStatePHP)
 	n := &ast.StmtDefault{
-		Stmts: []ast.Vertex{},
+		Stmts: nil,
 	}
 	n.Accept(p)
 

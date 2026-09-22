@@ -1,8 +1,10 @@
-package php7
+package php
 
 import (
-	"gotest.tools/assert"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"gotest.tools/assert"
 
 	"github.com/shyim/go-phplint/internal/conf"
 	"github.com/shyim/go-phplint/internal/errors"
@@ -175,7 +177,6 @@ func TestTokens(t *testing.T) {
 		( array )
 		( bool )
 		( boolean )
-		( real )
 		( double )
 		( float )
 		( int )
@@ -183,7 +184,6 @@ func TestTokens(t *testing.T) {
 		( object )
 		( string )
 		( binary )
-		( unset )
 
 	`
 
@@ -318,7 +318,7 @@ func TestTokens(t *testing.T) {
 		token.ID(int('|')).String(),
 		token.ID(int('/')).String(),
 		token.ID(int('^')).String(),
-		token.ID(int('&')).String(),
+		token.ID(token.T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG).String(),
 		token.ID(int('+')).String(),
 		token.ID(int('-')).String(),
 		token.ID(int('*')).String(),
@@ -346,16 +346,15 @@ func TestTokens(t *testing.T) {
 		token.T_BOOL_CAST.String(),
 		token.T_DOUBLE_CAST.String(),
 		token.T_DOUBLE_CAST.String(),
-		token.T_DOUBLE_CAST.String(),
 		token.T_INT_CAST.String(),
 		token.T_INT_CAST.String(),
 		token.T_OBJECT_CAST.String(),
 		token.T_STRING_CAST.String(),
 		token.T_STRING_CAST.String(),
-		token.T_UNSET_CAST.String(),
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -389,6 +388,7 @@ func TestShebang(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -414,6 +414,7 @@ func TestShebangHtml(t *testing.T) {
 `
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -469,6 +470,7 @@ func TestNumberTokens(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -531,6 +533,7 @@ func TestConstantStrings(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -583,6 +586,7 @@ func TestSingleQuoteStringTokens(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -683,6 +687,7 @@ func TestTeplateStringTokens(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -779,6 +784,7 @@ func TestBackquoteStringTokens(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -878,6 +884,7 @@ CAT;
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -956,6 +963,7 @@ CAT
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1000,6 +1008,7 @@ CAT;
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1036,6 +1045,7 @@ func TestHereDocTokens73(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1071,6 +1081,7 @@ CAT;`
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 2,
@@ -1099,6 +1110,7 @@ func TestHereDocUnclosed(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1136,6 +1148,7 @@ func TestInlineHtmlNopTokens(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1176,6 +1189,7 @@ func TestStringTokensAfterVariable(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1215,6 +1229,7 @@ func TestSlashAfterVariable(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1258,6 +1273,7 @@ func TestCommentEnd(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1295,6 +1311,7 @@ func TestCommentNewLine(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1332,6 +1349,7 @@ func TestCommentNewLine1(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1369,6 +1387,7 @@ func TestCommentNewLine2(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1407,6 +1426,7 @@ func TestCommentWithPhpEndTag(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1445,6 +1465,7 @@ func TestInlineComment(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1483,6 +1504,7 @@ func TestInlineComment2(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1525,6 +1547,7 @@ func TestEmptyInlineComment(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1563,6 +1586,7 @@ func TestEmptyInlineComment2(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1585,6 +1609,7 @@ func TestMethodCallTokens(t *testing.T) {
 	$a -> bar ( '' ) ;`
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1693,6 +1718,7 @@ func TestYieldFromTokens(t *testing.T) {
 	yield from $a`
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1735,6 +1761,7 @@ func TestVarNameByteChars(t *testing.T) {
 	src := "<?php $\x80 $\xff"
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1753,6 +1780,7 @@ func TestStringVarNameByteChars(t *testing.T) {
 	src := "<?php \"$\x80 $\xff\""
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1781,6 +1809,7 @@ func TestIgnoreControllCharacters(t *testing.T) {
 
 	var actualErr *errors.Error
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1805,13 +1834,17 @@ func TestIgnoreControllCharacters(t *testing.T) {
 		Msg: "WARNING: Unexpected character in input: '\x04' (ASCII=4)",
 		Pos: &position.Position{StartLine: 1, EndLine: 1, StartPos: 6, EndPos: 7},
 	}
-	assert.DeepEqual(t, expectedErr, actualErr)
+	assert.DeepEqual(t, expectedErr, actualErr, cmp.FilterPath(func(path cmp.Path) bool {
+		field, ok := path.Index(-1).(cmp.StructField)
+		return ok && (field.Name() == "StartCol" || field.Name() == "EndCol")
+	}, cmp.Ignore()))
 }
 
 func TestIgnoreControllCharactersAtStringVarOffset(t *testing.T) {
 	src := "<?php \"$a[test\004]\";"
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1849,6 +1882,7 @@ func TestDoubleDollar(t *testing.T) {
 	src := `<?php "$$a";`
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -1876,6 +1910,7 @@ func TestTripleDollar(t *testing.T) {
 	src := `<?php "$$$a";`
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
