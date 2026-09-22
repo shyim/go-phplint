@@ -1,17 +1,17 @@
-package php8_test
+package php_test
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/shyim/go-phplint/internal/php8"
 	"github.com/shyim/go-phplint/internal/conf"
+	php "github.com/shyim/go-phplint/internal/php"
 	"github.com/shyim/go-phplint/internal/version"
 )
 
-func BenchmarkPhp8(b *testing.B) {
-	src, err := ioutil.ReadFile(filepath.Join("testdata", "test.php"))
+func BenchmarkPhp(b *testing.B) {
+	src, err := os.ReadFile(filepath.Join("testdata", "test.php"))
 	if err != nil {
 		b.Fatal("can not read testdata/test.php: " + err.Error())
 	}
@@ -20,11 +20,11 @@ func BenchmarkPhp8(b *testing.B) {
 		config := conf.Config{
 			Version: &version.Version{
 				Major: 8,
-				Minor: 8,
+				Minor: 4,
 			},
 		}
-		lexer := php8.NewLexer(src, config)
-		php8parser := php8.NewParser(lexer, config)
-		php8parser.Parse()
+		lexer := php.NewLexer(src, config)
+		phpparser := php.NewParser(lexer, config)
+		phpparser.Parse()
 	}
 }

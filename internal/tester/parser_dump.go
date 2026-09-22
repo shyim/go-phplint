@@ -52,7 +52,8 @@ func (p *ParserDumpTestSuite) Run() {
 	p.t.Helper()
 
 	config := conf.Config{
-		Version: &p.Version,
+		Fidelity: true,
+		Version:  &p.Version,
 	}
 
 	actual, err := parser.Parse([]byte(p.Code), config)

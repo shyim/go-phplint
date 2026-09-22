@@ -1,4 +1,4 @@
-package php7
+package php
 
 import (
 	"github.com/shyim/go-phplint/internal/ast"
@@ -14,7 +14,9 @@ type ParserBrackets struct {
 }
 
 func (n *ParserBrackets) Accept(v ast.Visitor) {
-	// do nothing
+	if n != nil && n.Child != nil {
+		n.Child.Accept(v)
+	}
 }
 
 func (n *ParserBrackets) GetPosition() *position.Position {
@@ -32,7 +34,14 @@ type ParserSeparatedList struct {
 }
 
 func (n *ParserSeparatedList) Accept(v ast.Visitor) {
-	// do nothing
+	if n == nil {
+		return
+	}
+	for _, item := range n.Items {
+		if item != nil {
+			item.Accept(v)
+		}
+	}
 }
 
 func (n *ParserSeparatedList) GetPosition() *position.Position {
@@ -52,7 +61,14 @@ type TraitAdaptationList struct {
 }
 
 func (n *TraitAdaptationList) Accept(v ast.Visitor) {
-	// do nothing
+	if n == nil {
+		return
+	}
+	for _, item := range n.Adaptations {
+		if item != nil {
+			item.Accept(v)
+		}
+	}
 }
 
 func (n *TraitAdaptationList) GetPosition() *position.Position {
@@ -69,11 +85,19 @@ type ArgumentList struct {
 	OpenParenthesisTkn  *token.Token
 	Arguments           []ast.Vertex
 	SeparatorTkns       []*token.Token
+	EllipsisTkn         *token.Token
 	CloseParenthesisTkn *token.Token
 }
 
 func (n *ArgumentList) Accept(v ast.Visitor) {
-	// do nothing
+	if n == nil {
+		return
+	}
+	for _, item := range n.Arguments {
+		if item != nil {
+			item.Accept(v)
+		}
+	}
 }
 
 func (n *ArgumentList) GetPosition() *position.Position {
@@ -84,6 +108,26 @@ func (n *ArgumentList) GetType() ast.Type {
 	return ast.TypeNone
 }
 
+type EnumCaseExpr struct {
+	Position  *position.Position
+	AssignTkn *token.Token
+	Expr      ast.Vertex
+}
+
+func (n *EnumCaseExpr) Accept(v ast.Visitor) {
+	if n != nil && n.Expr != nil {
+		n.Expr.Accept(v)
+	}
+}
+
+func (n *EnumCaseExpr) GetPosition() *position.Position {
+	return n.Position
+}
+
+func (n *EnumCaseExpr) GetType() ast.Type {
+	return ast.TypeNone
+}
+
 type ReturnType struct {
 	Position *position.Position
 	ColonTkn *token.Token
@@ -91,7 +135,9 @@ type ReturnType struct {
 }
 
 func (n *ReturnType) Accept(v ast.Visitor) {
-	// do nothing
+	if n != nil && n.Type != nil {
+		n.Type.Accept(v)
+	}
 }
 
 func (n *ReturnType) GetPosition() *position.Position {
@@ -111,7 +157,15 @@ type TraitMethodRef struct {
 }
 
 func (n *TraitMethodRef) Accept(v ast.Visitor) {
-	// do nothing
+	if n == nil {
+		return
+	}
+	if n.Trait != nil {
+		n.Trait.Accept(v)
+	}
+	if n.Method != nil {
+		n.Method.Accept(v)
+	}
 }
 
 func (n *TraitMethodRef) GetPosition() *position.Position {

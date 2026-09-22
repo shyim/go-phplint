@@ -3,8 +3,7 @@ package lexer
 import (
 	"errors"
 
-	"github.com/shyim/go-phplint/internal/php7"
-	"github.com/shyim/go-phplint/internal/php8"
+	php "github.com/shyim/go-phplint/internal/php"
 	"github.com/shyim/go-phplint/internal/conf"
 	"github.com/shyim/go-phplint/internal/token"
 )
@@ -16,12 +15,10 @@ type Lexer interface {
 }
 
 func New(src []byte, config conf.Config) (Lexer, error) {
-	if config.Version.InPhp7Range() {
-		return php7.NewLexer(src, config), nil
-	}
-
-	if config.Version.InPhp8Range() {
-		return php8.NewLexer(src, config), nil
+	// The unified lexer tokenizes the full PHP 7/8 superset and downgrades
+	// version-gated keywords for older profiles.
+	if config.Version.InPhp7Range() || config.Version.InPhp8Range() {
+		return php.NewLexer(src, config), nil
 	}
 
 	return nil, ErrVersionOutOfRange

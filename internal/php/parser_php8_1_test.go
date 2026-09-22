@@ -1,4 +1,4 @@
-package php8_test
+package php_test
 
 import (
 	"testing"
@@ -216,7 +216,6 @@ class Foo {
 						},
 					},
 					Stmt: &ast.StmtStmtList{
-						Stmts: []ast.Vertex{},
 					},
 				},
 			},
@@ -247,7 +246,6 @@ function f(): never {}
 					},
 				},
 			},
-			Stmts: []ast.Vertex{},
 		},
 	},
 },`
@@ -271,7 +269,6 @@ enum C: int implements Bar {}
 			Name: &ast.Identifier{
 				Val: []byte("A"),
 			},
-			Stmts: []ast.Vertex{},
 		},
 		&ast.StmtEnum{
 			Name: &ast.Identifier{
@@ -293,7 +290,6 @@ enum C: int implements Bar {}
 					},
 				},
 			},
-			Stmts: []ast.Vertex{},
 		},
 		&ast.StmtEnum{
 			Name: &ast.Identifier{
@@ -315,7 +311,6 @@ enum C: int implements Bar {}
 					},
 				},
 			},
-			Stmts: []ast.Vertex{},
 		},
 	},
 },`
@@ -426,7 +421,6 @@ function test(A&B $a): A&B {}
 					},
 				},
 			},
-			Stmts: []ast.Vertex{},
 		},
 	},
 },`

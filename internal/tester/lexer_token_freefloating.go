@@ -3,9 +3,8 @@ package tester
 import (
 	"testing"
 
-	"github.com/shyim/go-phplint/internal/php7"
-	"github.com/shyim/go-phplint/internal/php8"
 	"github.com/shyim/go-phplint/internal/conf"
+	php "github.com/shyim/go-phplint/internal/php"
 	"github.com/shyim/go-phplint/internal/token"
 	"github.com/shyim/go-phplint/internal/version"
 	"gotest.tools/assert"
@@ -40,16 +39,13 @@ func (l *LexerTokenFreeFloatingTestSuite) UsePHP8() {
 
 func (l *LexerTokenFreeFloatingTestSuite) Run() {
 	config := conf.Config{
-		Version: &l.Version,
+		Fidelity: true,
+		Version:  &l.Version,
 	}
 
 	var lexer Lexer
 
-	if l.Version.Less(&version.Version{Major: 8, Minor: 0}) {
-		lexer = php7.NewLexer([]byte(l.Code), config)
-	} else {
-		lexer = php8.NewLexer([]byte(l.Code), config)
-	}
+	lexer = php.NewLexer([]byte(l.Code), config)
 
 	for _, expected := range l.Expected {
 		tkn := lexer.Lex()

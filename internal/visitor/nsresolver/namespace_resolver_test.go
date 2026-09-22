@@ -180,7 +180,7 @@ func TestResolveInstanceCatch(t *testing.T) {
 				},
 			},
 			&ast.StmtTry{
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				Catches: []ast.Vertex{
 					&ast.StmtCatch{
 						Types: []ast.Vertex{
@@ -188,7 +188,7 @@ func TestResolveInstanceCatch(t *testing.T) {
 							nameF,
 						},
 						Var:   &ast.ExprVariable{Name: &ast.Identifier{Value: []byte("foo")}},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 					},
 				},
 			},
@@ -444,7 +444,7 @@ func TestResolveInterfaceName(t *testing.T) {
 func TestResolveTraitName(t *testing.T) {
 	traitNode := &ast.StmtTrait{
 		Name:  &ast.Identifier{Value: []byte("A")},
-		Stmts: []ast.Vertex{},
+		Stmts: nil,
 	}
 
 	stxTree := &ast.StmtStmtList{
@@ -511,7 +511,7 @@ func TestResolveMethodName(t *testing.T) {
 		},
 		ReturnType: &ast.Nullable{Expr: nameBC},
 		Stmt: &ast.StmtStmtList{
-			Stmts: []ast.Vertex{},
+			Stmts: nil,
 		},
 	}
 
@@ -623,7 +623,7 @@ func TestResolveNamespaces(t *testing.T) {
 				Call:  &ast.Identifier{Value: []byte("foo")},
 			},
 			&ast.StmtNamespace{
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 			},
 			&ast.StmtNamespace{
 				Name: namespaceCD,

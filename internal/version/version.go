@@ -89,6 +89,18 @@ func (v *Version) InPhp8Range() bool {
 	return v.InRange(php8RangeStart, php8RangeEnd)
 }
 
+// AtLeast reports whether v is at least major.minor. A nil version is treated
+// as the newest profile so callers accept the full syntax superset.
+func (v *Version) AtLeast(major, minor uint64) bool {
+	if v == nil {
+		return true
+	}
+	if v.Major != major {
+		return v.Major > major
+	}
+	return v.Minor >= minor
+}
+
 // Compare compares this version to another one. It returns -1, 0, or 1 if
 // the version smaller, equal, or larger than the other version.
 func (v *Version) Compare(o *Version) int {

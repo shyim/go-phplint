@@ -1,6 +1,8 @@
 package token
 
-const DefaultBlockSize = 1024
+// DefaultBlockSize is the first slab. Later slabs double so small files do
+// not reserve a thousand tokens and large files do not allocate fixed slabs.
+const DefaultBlockSize = 32
 
 type Pool struct {
 	block []Token
@@ -8,18 +10,21 @@ type Pool struct {
 }
 
 func NewPool(blockSize int) *Pool {
+	if blockSize < 1 {
+		blockSize = DefaultBlockSize
+	}
 	return &Pool{
 		block: make([]Token, blockSize),
 	}
 }
 
 func (p *Pool) Get() *Token {
-	if len(p.block) == 0 {
-		return nil
-	}
-
-	if len(p.block) == p.off {
-		p.block = make([]Token, len(p.block))
+	if p.off == len(p.block) {
+		next := len(p.block) * 2
+		if next < DefaultBlockSize {
+			next = DefaultBlockSize
+		}
+		p.block = make([]Token, next)
 		p.off = 0
 	}
 

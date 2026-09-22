@@ -40,6 +40,7 @@ func (v *compileValidator) validateNullable(nullable *ast.Nullable) {
 }
 
 func (v *compileValidator) validateUnion(union *ast.Union) {
+	v.requireVersion(union, PHP80, "union types")
 	seen := make(map[string]bool)
 	hasIntersection := false
 	onlyNullFalse := len(union.Types) > 0
@@ -154,6 +155,11 @@ func (v *compileValidator) validateSimpleType(node ast.Vertex, context typeConte
 		if context != typeContextReturn {
 			v.report(node, "never is only permitted as a return type")
 		}
+	case "static":
+		v.requireVersion(node, PHP80, "the static return type")
+		if context != typeContextReturn {
+			v.report(node, "static is only permitted as a return type")
+		}
 	case "void":
 		if context != typeContextReturn {
 			v.report(node, "void is only permitted as a return type")
@@ -174,10 +180,19 @@ func simpleTypeName(node ast.Vertex) string {
 	case *ast.NamePart:
 		return string(current.Value)
 	case *ast.Name:
+		if len(current.Parts) == 0 {
+			return string(current.Value)
+		}
 		return joinNameParts(current.Parts)
 	case *ast.NameFullyQualified:
+		if len(current.Parts) == 0 {
+			return string(current.Value)
+		}
 		return `\` + joinNameParts(current.Parts)
 	case *ast.NameRelative:
+		if len(current.Parts) == 0 {
+			return string(current.Value)
+		}
 		return `namespace\` + joinNameParts(current.Parts)
 	case *ast.Nullable:
 		return simpleTypeName(current.Expr)

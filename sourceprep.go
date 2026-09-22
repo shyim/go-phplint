@@ -5,11 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/shyim/go-phplint/internal/conf"
-	phperrors "github.com/shyim/go-phplint/internal/errors"
-	phplexer "github.com/shyim/go-phplint/internal/lexer"
 	"github.com/shyim/go-phplint/internal/token"
-	phpversion "github.com/shyim/go-phplint/internal/version"
 )
 
 type sourceLayout struct {
@@ -18,30 +14,27 @@ type sourceLayout struct {
 	functionParam []bool
 }
 
-func prepareSource(source []byte, version Version, filename string) ([]byte, []Diagnostic) {
-	tokens, diagnostics := tokenizeForPreparation(source, filename)
+func prepareSource(source []byte, tokens []*token.Token, version Version, filename string) []Diagnostic {
 	if len(tokens) == 0 {
-		return source, diagnostics
+		return nil
 	}
 
-	prepared := bytes.Clone(source)
+	var diagnostics []Diagnostic
 	layout := analyzeLayout(tokens)
 
-	prepareDNFTypes(prepared, tokens, version, filename, &diagnostics)
 	prepareNumericLiteralSeparators(tokens, version, filename, &diagnostics)
-	prepareTypedClassConstants(prepared, tokens, layout, version, filename, &diagnostics)
-	prepareReadonlyAnonymousClasses(prepared, tokens, version, filename, &diagnostics)
-	prepareDynamicClassConstants(prepared, tokens, version, filename, &diagnostics)
-	preparePropertyHooks(prepared, tokens, layout, version, filename, &diagnostics)
-	prepareAsymmetricVisibility(prepared, tokens, version, filename, &diagnostics)
-	prepareUnparenthesizedNewDereference(prepared, tokens, version, filename, &diagnostics)
-	preparePipes(prepared, tokens, version, filename, &diagnostics)
-	prepareVoidCasts(prepared, tokens, version, filename, &diagnostics)
-	prepareCloneWith(prepared, tokens, version, filename, &diagnostics)
-	prepareConstantAttributes(prepared, tokens, layout, version, filename, &diagnostics)
-	prepareFinalPromotedProperties(prepared, tokens, layout, version, filename, &diagnostics)
+	prepareTypedClassConstants(source, tokens, layout, version, filename, &diagnostics)
+	prepareReadonlyAnonymousClasses(source, tokens, version, filename, &diagnostics)
+	prepareDynamicClassConstants(source, tokens, version, filename, &diagnostics)
+	preparePropertyHooks(source, tokens, layout, version, filename, &diagnostics)
+	prepareUnparenthesizedNewDereference(source, tokens, version, filename, &diagnostics)
+	preparePipes(source, tokens, version, filename, &diagnostics)
+	prepareVoidCasts(source, tokens, version, filename, &diagnostics)
+	prepareCloneWith(source, tokens, version, filename, &diagnostics)
+	prepareConstantAttributes(source, tokens, layout, version, filename, &diagnostics)
+	prepareFinalPromotedProperties(source, tokens, layout, version, filename, &diagnostics)
 
-	return prepared, diagnostics
+	return diagnostics
 }
 
 func prepareNumericLiteralSeparators(
@@ -67,93 +60,6 @@ func prepareNumericLiteralSeparators(
 			"numeric literal separators",
 		)
 	}
-}
-
-func prepareDNFTypes(
-	source []byte,
-	tokens []*token.Token,
-	version Version,
-	filename string,
-	diagnostics *[]Diagnostic,
-) {
-	for index := 0; index < len(tokens); index++ {
-		if tokens[index].ID != token.ID('(') {
-			continue
-		}
-		closeIndex := matchingToken(tokens, index, token.ID('('), token.ID(')'))
-		if closeIndex < 0 {
-			continue
-		}
-
-		unionAdjacent := (index > 0 && tokens[index-1].ID == token.ID('|')) ||
-			(closeIndex+1 < len(tokens) && tokens[closeIndex+1].ID == token.ID('|'))
-		if !unionAdjacent || !looksLikeIntersectionType(tokens, index+1, closeIndex) {
-			continue
-		}
-
-		replaceRange(source, tokenStart(tokens[index]), tokenEnd(tokens[closeIndex]), []byte("A"))
-		addFeatureDiagnostic(
-			diagnostics,
-			filename,
-			tokens[index],
-			tokens[closeIndex],
-			version,
-			PHP82,
-			"disjunctive normal form types",
-		)
-		index = closeIndex
-	}
-}
-
-func looksLikeIntersectionType(tokens []*token.Token, start, end int) bool {
-	hasIntersection := false
-	for index := start; index < end; index++ {
-		switch tokens[index].ID {
-		case token.T_VARIABLE,
-			token.T_LNUMBER,
-			token.T_DNUMBER,
-			token.T_CONSTANT_ENCAPSED_STRING,
-			token.ID('='),
-			token.ID(';'):
-			return false
-		case token.T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG,
-			token.T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG,
-			token.ID('&'):
-			hasIntersection = true
-		}
-	}
-	return hasIntersection
-}
-
-func tokenizeForPreparation(source []byte, filename string) ([]*token.Token, []Diagnostic) {
-	var diagnostics []Diagnostic
-	lexer, err := phplexer.New(source, conf.Config{
-		Version: &phpversion.Version{Major: 8, Minor: 6},
-		ErrorHandlerFunc: func(lexError *phperrors.Error) {
-			start, end := positionFromInternal(lexError.Pos)
-			diagnostics = append(diagnostics, Diagnostic{
-				Filename: filename,
-				Message:  lexError.Msg,
-				Phase:    PhaseLex,
-				Start:    start,
-				End:      end,
-			})
-		},
-	})
-	if err != nil {
-		return nil, diagnostics
-	}
-
-	var tokens []*token.Token
-	for {
-		current := lexer.Lex()
-		if current == nil || current.ID == 0 {
-			break
-		}
-		tokens = append(tokens, current)
-	}
-
-	return tokens, diagnostics
 }
 
 func analyzeLayout(tokens []*token.Token) sourceLayout {
@@ -197,7 +103,7 @@ func analyzeLayout(tokens []*token.Token) sourceLayout {
 			pendingClassKind = "enum"
 		case token.T_FUNCTION, token.T_FN:
 			pendingFunction = true
-		case token.ID('{'):
+		case token.ID('{'), token.T_PROPERTY_HOOKS:
 			braceDepth++
 			if pendingClassKind != "" {
 				classes = append(classes, classFrame{depth: braceDepth, kind: pendingClassKind})
@@ -466,7 +372,7 @@ func prepareReadonlyAnonymousClasses(
 ) {
 	for index := 0; index+2 < len(tokens); index++ {
 		if tokens[index].ID != token.T_NEW ||
-			tokens[index+1].ID != token.T_READONLY ||
+			!isReadonlyToken(tokens[index+1]) ||
 			tokens[index+2].ID != token.T_CLASS {
 			continue
 		}
@@ -525,7 +431,7 @@ func preparePropertyHooks(
 	diagnostics *[]Diagnostic,
 ) {
 	for index := 0; index+1 < len(tokens); index++ {
-		if tokens[index].ID != token.ID('{') || !layout.classMember[index] {
+		if tokens[index].ID != token.T_PROPERTY_HOOKS || !layout.classMember[index] {
 			continue
 		}
 		hookNameIndex := propertyHookNameIndex(tokens, index+1, len(tokens))
@@ -533,7 +439,7 @@ func preparePropertyHooks(
 			continue
 		}
 
-		closeIndex := matchingToken(tokens, index, token.ID('{'), token.ID('}'))
+		closeIndex := matchingHookBlock(tokens, index)
 		if closeIndex < 0 {
 			continue
 		}
@@ -559,38 +465,6 @@ func preparePropertyHooks(
 			"property hooks",
 		)
 		index = closeIndex
-	}
-}
-
-func prepareAsymmetricVisibility(
-	source []byte,
-	tokens []*token.Token,
-	version Version,
-	filename string,
-	diagnostics *[]Diagnostic,
-) {
-	for index := 0; index+3 < len(tokens); index++ {
-		if !isVisibility(tokens[index].ID) ||
-			tokens[index+1].ID != token.ID('(') ||
-			!tokenIsWord(tokens[index+2], "set") ||
-			tokens[index+3].ID != token.ID(')') {
-			continue
-		}
-
-		if version >= PHP84 {
-			validateAsymmetricVisibility(tokens, index, version, filename, diagnostics)
-		}
-		blankRange(source, tokenStart(tokens[index]), tokenEnd(tokens[index+3]))
-		addFeatureDiagnostic(
-			diagnostics,
-			filename,
-			tokens[index],
-			tokens[index+3],
-			version,
-			PHP84,
-			"asymmetric property visibility",
-		)
-		index += 3
 	}
 }
 
@@ -634,6 +508,20 @@ func validatePropertyHookBlock(
 		}
 	}
 
+	isInterface := layout.classKind[openIndex] == "interface"
+	sawAbstractHook := false
+	defer func() {
+		if hasAbstract && !sawAbstractHook {
+			addSourceDiagnostic(
+				diagnostics,
+				filename,
+				tokens[openIndex],
+				tokens[openIndex],
+				"abstract property must specify at least one abstract hook",
+			)
+		}
+	}()
+
 	seen := make(map[string]bool)
 	for index := openIndex + 1; index < closeIndex; {
 		for index < closeIndex && tokens[index].ID == token.T_ATTRIBUTE {
@@ -643,7 +531,9 @@ func validatePropertyHookBlock(
 			}
 			index = attributeEnd + 1
 		}
+		hookFinal := false
 		if index < closeIndex && tokens[index].ID == token.T_FINAL {
+			hookFinal = true
 			index++
 		}
 		if index < closeIndex && isAmpersand(tokens[index].ID) {
@@ -709,6 +599,15 @@ func validatePropertyHookBlock(
 
 		switch tokens[index].ID {
 		case token.T_DOUBLE_ARROW:
+			if isInterface {
+				addSourceDiagnostic(
+					diagnostics,
+					filename,
+					tokens[index],
+					tokens[index],
+					"abstract property hook cannot have a body",
+				)
+			}
 			semicolon := findHookTerminator(tokens, index+1, closeIndex)
 			if semicolon < 0 {
 				addSourceDiagnostic(
@@ -722,20 +621,40 @@ func validatePropertyHookBlock(
 			}
 			index = semicolon + 1
 		case token.ID('{'):
+			if isInterface {
+				addSourceDiagnostic(
+					diagnostics,
+					filename,
+					tokens[index],
+					tokens[index],
+					"abstract property hook cannot have a body",
+				)
+			}
 			bodyEnd := matchingToken(tokens, index, token.ID('{'), token.ID('}'))
 			if bodyEnd < 0 || bodyEnd > closeIndex {
 				return
 			}
 			index = bodyEnd + 1
 		case token.ID(';'):
-			if !hasAbstract && layout.classKind[openIndex] != "interface" {
+			if hookFinal && (hasAbstract || isInterface) {
 				addSourceDiagnostic(
 					diagnostics,
 					filename,
 					nameToken,
 					tokens[index],
-					"non-abstract property hooks must have a body",
+					"property hook cannot be both abstract and final",
 				)
+			} else {
+				sawAbstractHook = true
+				if !hasAbstract && !isInterface {
+					addSourceDiagnostic(
+						diagnostics,
+						filename,
+						nameToken,
+						tokens[index],
+						"non-abstract property hooks must have a body",
+					)
+				}
 			}
 			index++
 		default:
@@ -798,7 +717,7 @@ func validSetHookParameter(tokens []*token.Token, start, end int) bool {
 		case token.T_ELLIPSIS, token.ID('='):
 			return false
 		}
-		if isAmpersand(tokens[index].ID) {
+		if isAmpersand(tokens[index].ID) && index+1 < end && tokens[index+1].ID == token.T_VARIABLE {
 			return false
 		}
 	}
@@ -818,45 +737,6 @@ func isAmpersand(id token.ID) bool {
 	return id == token.ID('&') ||
 		id == token.T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG ||
 		id == token.T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG
-}
-
-func validateAsymmetricVisibility(
-	tokens []*token.Token,
-	index int,
-	version Version,
-	filename string,
-	diagnostics *[]Diagnostic,
-) {
-	declarationStart := classMemberStart(tokens, index)
-	getVisibility := token.T_PUBLIC
-	hasStatic := false
-	for cursor := declarationStart; cursor < index; cursor++ {
-		if isVisibility(tokens[cursor].ID) {
-			getVisibility = tokens[cursor].ID
-		}
-		if tokens[cursor].ID == token.T_STATIC {
-			hasStatic = true
-		}
-	}
-
-	if visibilityRank(getVisibility) < visibilityRank(tokens[index].ID) {
-		addSourceDiagnostic(
-			diagnostics,
-			filename,
-			tokens[index],
-			tokens[index+3],
-			"property visibility must not be weaker than set visibility",
-		)
-	}
-	if hasStatic && version < PHP85 {
-		addSourceDiagnostic(
-			diagnostics,
-			filename,
-			tokens[index],
-			tokens[index+3],
-			"asymmetric visibility for static properties requires PHP 8.5",
-		)
-	}
 }
 
 func classMemberStart(tokens []*token.Token, index int) int {
@@ -896,7 +776,7 @@ func findHookTerminator(tokens []*token.Token, start, end int) int {
 			square++
 		case token.ID(']'):
 			square--
-		case token.ID('{'):
+		case token.ID('{'), token.T_CURLY_OPEN, token.T_DOLLAR_OPEN_CURLY_BRACES:
 			curly++
 		case token.ID('}'):
 			curly--
@@ -907,19 +787,6 @@ func findHookTerminator(tokens []*token.Token, start, end int) int {
 		}
 	}
 	return -1
-}
-
-func visibilityRank(id token.ID) int {
-	switch id {
-	case token.T_PRIVATE:
-		return 1
-	case token.T_PROTECTED:
-		return 2
-	case token.T_PUBLIC:
-		return 3
-	default:
-		return 0
-	}
 }
 
 func addSourceDiagnostic(
@@ -947,6 +814,18 @@ func preparePipes(
 	diagnostics *[]Diagnostic,
 ) {
 	for index := 0; index+1 < len(tokens); index++ {
+		if tokens[index].ID == token.T_PIPE {
+			addFeatureDiagnostic(
+				diagnostics,
+				filename,
+				tokens[index],
+				tokens[index],
+				version,
+				PHP85,
+				"the pipe operator",
+			)
+			continue
+		}
 		if tokens[index].ID != token.ID('|') || tokens[index+1].ID != token.ID('>') {
 			continue
 		}
@@ -954,7 +833,6 @@ func preparePipes(
 			continue
 		}
 
-		copy(source[tokenStart(tokens[index]):tokenEnd(tokens[index+1])], "??")
 		addFeatureDiagnostic(
 			diagnostics,
 			filename,
@@ -1030,15 +908,27 @@ func prepareVoidCasts(
 	filename string,
 	diagnostics *[]Diagnostic,
 ) {
-	for index := 0; index+3 < len(tokens); index++ {
-		if tokens[index].ID != token.ID('(') ||
+	for index := 0; index < len(tokens); index++ {
+		if tokens[index].ID == token.T_VOID_CAST {
+			addFeatureDiagnostic(
+				diagnostics,
+				filename,
+				tokens[index],
+				tokens[index],
+				version,
+				PHP85,
+				"void casts",
+			)
+			continue
+		}
+		if index+3 >= len(tokens) ||
+			tokens[index].ID != token.ID('(') ||
 			!tokenIsWord(tokens[index+1], "void") ||
 			tokens[index+2].ID != token.ID(')') ||
 			!canStartExpression(tokens[index+3]) {
 			continue
 		}
 
-		copy(source[tokenStart(tokens[index+1]):tokenEnd(tokens[index+1])], "bool")
 		addFeatureDiagnostic(
 			diagnostics,
 			filename,
@@ -1073,7 +963,6 @@ func prepareCloneWith(
 			continue
 		}
 
-		copy(source[tokenStart(tokens[index]):tokenEnd(tokens[index])], "clonx")
 		addFeatureDiagnostic(
 			diagnostics,
 			filename,
@@ -1204,13 +1093,13 @@ func findBefore(tokens []*token.Token, start int, wanted token.ID, stops ...toke
 	return -1
 }
 
-func matchingToken(tokens []*token.Token, start int, open, close token.ID) int {
+func matchingHookBlock(tokens []*token.Token, start int) int {
 	depth := 0
 	for index := start; index < len(tokens); index++ {
 		switch tokens[index].ID {
-		case open:
+		case token.ID('{'), token.T_PROPERTY_HOOKS, token.T_CURLY_OPEN, token.T_DOLLAR_OPEN_CURLY_BRACES:
 			depth++
-		case close:
+		case token.ID('}'):
 			depth--
 			if depth == 0 {
 				return index
@@ -1218,6 +1107,28 @@ func matchingToken(tokens []*token.Token, start int, open, close token.ID) int {
 		}
 	}
 	return -1
+}
+
+func matchingToken(tokens []*token.Token, start int, open, close token.ID) int {
+	depth := 0
+	for index := start; index < len(tokens); index++ {
+		id := tokens[index].ID
+		if id == open || (open == token.ID('{') && isInterpolatedCurly(id)) {
+			depth++
+			continue
+		}
+		if id == close {
+			depth--
+			if depth == 0 {
+				return index
+			}
+		}
+	}
+	return -1
+}
+
+func isInterpolatedCurly(id token.ID) bool {
+	return id == token.T_CURLY_OPEN || id == token.T_DOLLAR_OPEN_CURLY_BRACES
 }
 
 func matchingAttributeEnd(tokens []*token.Token, start int) int {
@@ -1261,38 +1172,11 @@ func hasTopLevelComma(tokens []*token.Token, start, end int) bool {
 	return false
 }
 
-func blankToken(source []byte, current *token.Token) {
-	blankRange(source, tokenStart(current), tokenEnd(current))
-}
+func blankToken(source []byte, current *token.Token) {}
 
-func blankRange(source []byte, start, end int) {
-	if start < 0 {
-		start = 0
-	}
-	if end > len(source) {
-		end = len(source)
-	}
-	for index := start; index < end; index++ {
-		if source[index] != '\n' && source[index] != '\r' {
-			source[index] = ' '
-		}
-	}
-}
+func blankRange(source []byte, start, end int) {}
 
-func replaceRange(source []byte, start, end int, replacement []byte) {
-	blankRange(source, start, end)
-	cursor := start
-	for _, value := range replacement {
-		for cursor < end && (source[cursor] == '\n' || source[cursor] == '\r') {
-			cursor++
-		}
-		if cursor >= end {
-			return
-		}
-		source[cursor] = value
-		cursor++
-	}
-}
+func replaceRange(source []byte, start, end int, replacement []byte) {}
 
 func tokenStart(current *token.Token) int {
 	if current == nil || current.Position == nil {
@@ -1329,7 +1213,19 @@ func isIdentifierToken(current *token.Token) bool {
 }
 
 func isVisibility(id token.ID) bool {
-	return id == token.T_PUBLIC || id == token.T_PROTECTED || id == token.T_PRIVATE
+	return id == token.T_PUBLIC || id == token.T_PROTECTED || id == token.T_PRIVATE ||
+		id == token.T_PUBLIC_SET || id == token.T_PROTECTED_SET || id == token.T_PRIVATE_SET
+}
+
+// isReadonlyToken reports whether the token is the `readonly` keyword. The
+// unified lexer emits it as a plain identifier on PHP 7 profiles, where it
+// is not yet reserved.
+func isReadonlyToken(current *token.Token) bool {
+	if current == nil {
+		return false
+	}
+	return current.ID == token.T_READONLY ||
+		(current.ID == token.T_STRING && tokenIsWord(current, "readonly"))
 }
 
 func canStartExpression(current *token.Token) bool {

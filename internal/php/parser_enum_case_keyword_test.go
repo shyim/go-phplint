@@ -1,4 +1,4 @@
-package php8_test
+package php_test
 
 import (
 	"testing"

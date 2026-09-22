@@ -11,6 +11,7 @@ import (
 	"github.com/shyim/go-phplint/internal/conf"
 	phperrors "github.com/shyim/go-phplint/internal/errors"
 	phpparser "github.com/shyim/go-phplint/internal/parser"
+	"github.com/shyim/go-phplint/internal/token"
 )
 
 // benchFixture is one PHP source file linted against one language profile.
@@ -81,16 +82,22 @@ func BenchmarkLintVersionProfiles(b *testing.B) {
 
 // BenchmarkLintLargeFile lints a generated file of a few thousand lines, which
 // is where parser allocations and diagnostic bookkeeping dominate.
+//
+// The work runs as a sub-benchmark. Go splits -bench on '/' and '|', and an
+// earlier alternative BenchmarkLint/… is a partial match of this function's
+// name, so the top-level result is never printed.
 func BenchmarkLintLargeFile(b *testing.B) {
 	source := generateLargeSource(100)
 	options := Options{PHPVersion: PHP84}
 
-	b.SetBytes(int64(len(source)))
-	for b.Loop() {
-		if _, err := Lint("large.php", source, options); err != nil {
-			b.Fatalf("Lint() error = %v", err)
+	b.Run("file", func(b *testing.B) {
+		b.SetBytes(int64(len(source)))
+		for b.Loop() {
+			if _, err := Lint("large.php", source, options); err != nil {
+				b.Fatalf("Lint() error = %v", err)
+			}
 		}
-	}
+	})
 }
 
 // BenchmarkPrepareSource isolates the token-level rewriting stage that runs
@@ -101,9 +108,18 @@ func BenchmarkPrepareSource(b *testing.B) {
 
 		b.Run(fixture.name, func(b *testing.B) {
 			b.SetBytes(int64(len(source)))
+			var tokens []*token.Token
+			_, err := phpparser.Parse(source, conf.Config{
+				Version:          fixture.version.internal(),
+				Tokens:           &tokens,
+				ErrorHandlerFunc: func(*phperrors.Error) {},
+			})
+			if err != nil {
+				b.Fatalf("Parse() error = %v", err)
+			}
+			b.ResetTimer()
 			for b.Loop() {
-				prepared, diagnostics := prepareSource(source, fixture.version, fixture.file)
-				_, _ = prepared, diagnostics
+				_ = prepareSource(source, tokens, fixture.version, fixture.file)
 			}
 		})
 	}
@@ -153,8 +169,7 @@ func BenchmarkValidate(b *testing.B) {
 func parseForBenchmark(tb testing.TB, source []byte, version Version) ast.Vertex {
 	tb.Helper()
 
-	prepared, _ := prepareSource(source, version, "bench.php")
-	root, err := phpparser.Parse(prepared, conf.Config{
+	root, err := phpparser.Parse(source, conf.Config{
 		Version:          version.internal(),
 		ErrorHandlerFunc: func(*phperrors.Error) {},
 	})

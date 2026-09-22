@@ -515,6 +515,25 @@ type StmtProperty struct {
 	Expr     Vertex
 }
 
+const (
+	// PropertyHookSemi is a hook with no body: `get;`.
+	PropertyHookSemi = "semi"
+	// PropertyHookShort is `set => expr`.
+	PropertyHookShort = "short"
+	// PropertyHookBlock is a brace body.
+	PropertyHookBlock = "block"
+)
+
+// PropertyHook is one get or set hook. It is not a walked AST node.
+type PropertyHook struct {
+	Name  string
+	ByRef bool
+	Final bool
+	Kind  string
+	Body  Vertex
+	Stmts []Vertex
+}
+
 // StmtPropertyList node
 type StmtPropertyList struct {
 	Position      *position.Position
@@ -524,6 +543,10 @@ type StmtPropertyList struct {
 	Props         []Vertex
 	SeparatorTkns []*token.Token
 	SemiColonTkn  *token.Token
+	// Hooked is set when the property has a hook block. Abstract and
+	// interface properties are legal only in that form.
+	Hooked bool
+	Hooks  []PropertyHook
 }
 
 // StmtReturn node
@@ -1517,6 +1540,8 @@ type Name struct {
 	Position      *position.Position
 	Parts         []Vertex
 	SeparatorTkns []*token.Token
+	// Value is the original name text when the parse did not split segments.
+	Value []byte
 }
 
 type NameFullyQualified struct {
@@ -1524,6 +1549,7 @@ type NameFullyQualified struct {
 	NsSeparatorTkn *token.Token
 	Parts          []Vertex
 	SeparatorTkns  []*token.Token
+	Value          []byte
 }
 
 type NameRelative struct {
@@ -1532,6 +1558,7 @@ type NameRelative struct {
 	NsSeparatorTkn *token.Token
 	Parts          []Vertex
 	SeparatorTkns  []*token.Token
+	Value          []byte
 }
 
 type NamePart struct {

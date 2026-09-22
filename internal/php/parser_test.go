@@ -1,9 +1,10 @@
-package php8_test
+package php_test
 
 import (
 	"testing"
 
-	"github.com/shyim/go-phplint/internal/php8"
+	"github.com/google/go-cmp/cmp"
+	"github.com/shyim/go-phplint/internal/php"
 	"gotest.tools/assert"
 
 	"github.com/shyim/go-phplint/internal/ast"
@@ -14,10 +15,11 @@ import (
 	"github.com/shyim/go-phplint/internal/version"
 )
 
-func TestMain(m *testing.M) {
-	// Ignore StartCol and EndCol in equality checks, these tests were written before they were added.
-	position.CheckColEquality = false
-}
+// Golden trees written before columns existed omit StartCol and EndCol.
+var ignorePositionColumns = cmp.FilterPath(func(path cmp.Path) bool {
+	field, ok := path.Index(-1).(cmp.StructField)
+	return ok && (field.Name() == "StartCol" || field.Name() == "EndCol")
+}, cmp.Ignore())
 
 func TestIdentifier(t *testing.T) {
 	src := `<? $foo;`
@@ -102,19 +104,20 @@ func TestIdentifier(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
-func TestPhp8ArgumentNode(t *testing.T) {
+func TestArgumentNode(t *testing.T) {
 	src := `<?
 		foo($a, ...$b);
 		$foo($a, ...$b);
@@ -1649,7 +1652,7 @@ func TestPhp8ArgumentNode(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -1678,19 +1681,20 @@ func TestPhp8ArgumentNode(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
-func TestPhp8ParameterNode(t *testing.T) {
+func TestParameterNode(t *testing.T) {
 	src := `<?
 		function foo(?bar $bar=null, baz &...$baz) {}
 		class foo {public function foo(?bar $bar=null, baz &...$baz) {}}
@@ -2081,7 +2085,7 @@ func TestPhp8ParameterNode(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -2569,7 +2573,7 @@ func TestPhp8ParameterNode(t *testing.T) {
 									},
 								},
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 							CloseCurlyBracketTkn: &token.Token{
 								ID:    token.ID(125),
 								Value: []byte("}"),
@@ -2935,7 +2939,7 @@ func TestPhp8ParameterNode(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -3321,7 +3325,7 @@ func TestPhp8ParameterNode(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -3362,16 +3366,17 @@ func TestPhp8ParameterNode(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestCommentEndFile(t *testing.T) {
@@ -3384,7 +3389,7 @@ func TestCommentEndFile(t *testing.T) {
 			StartPos:  -1,
 			EndPos:    -1,
 		},
-		Stmts: []ast.Vertex{},
+		Stmts: nil,
 		EndTkn: &token.Token{
 			FreeFloating: []*token.Token{
 				{
@@ -3422,16 +3427,17 @@ func TestCommentEndFile(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 // name
@@ -3549,16 +3555,17 @@ func TestName(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestFullyQualified(t *testing.T) {
@@ -3684,16 +3691,17 @@ func TestFullyQualified(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestRelative(t *testing.T) {
@@ -3829,16 +3837,17 @@ func TestRelative(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 // scalar
@@ -3975,16 +3984,17 @@ func TestScalarEncapsed_SimpleVar(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarEncapsed_SimpleVarOneChar(t *testing.T) {
@@ -4119,16 +4129,17 @@ func TestScalarEncapsed_SimpleVarOneChar(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarEncapsed_SimpleVarEndsEcapsed(t *testing.T) {
@@ -4282,16 +4293,17 @@ func TestScalarEncapsed_SimpleVarEndsEcapsed(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarEncapsed_StringVarCurveOpen(t *testing.T) {
@@ -4481,16 +4493,17 @@ func TestScalarEncapsed_StringVarCurveOpen(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarEncapsed_SimpleVarPropertyFetch(t *testing.T) {
@@ -4681,16 +4694,17 @@ func TestScalarEncapsed_SimpleVarPropertyFetch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarEncapsed_DollarOpenCurlyBraces(t *testing.T) {
@@ -4845,16 +4859,17 @@ func TestScalarEncapsed_DollarOpenCurlyBraces(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarEncapsed_DollarOpenCurlyBracesDimNumber(t *testing.T) {
@@ -5048,16 +5063,17 @@ func TestScalarEncapsed_DollarOpenCurlyBracesDimNumber(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarEncapsed_CurlyOpenMethodCall(t *testing.T) {
@@ -5277,16 +5293,17 @@ func TestScalarEncapsed_CurlyOpenMethodCall(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarHeredoc_HeredocSimpleLabel(t *testing.T) {
@@ -5456,16 +5473,17 @@ LBL;
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarHeredoc_SimpleHeredocLabel(t *testing.T) {
@@ -5635,16 +5653,17 @@ LBL;
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarHeredoc_SimpleNowdocLabel(t *testing.T) {
@@ -5768,16 +5787,17 @@ LBL;
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarHeredoc_EmptyHeredoc(t *testing.T) {
@@ -5879,16 +5899,17 @@ CAD;
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarHeredoc_HeredocScalarString(t *testing.T) {
@@ -6012,16 +6033,17 @@ CAD;
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarMagicConstant(t *testing.T) {
@@ -6100,16 +6122,17 @@ func TestScalarMagicConstant(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarNumber_LNumber(t *testing.T) {
@@ -6187,16 +6210,17 @@ func TestScalarNumber_LNumber(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarNumber_DNumber(t *testing.T) {
@@ -6274,16 +6298,17 @@ func TestScalarNumber_DNumber(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarNumber_Float(t *testing.T) {
@@ -6361,16 +6386,17 @@ func TestScalarNumber_Float(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarNumber_BinaryLNumber(t *testing.T) {
@@ -6448,16 +6474,17 @@ func TestScalarNumber_BinaryLNumber(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarNumber_BinaryDNumber(t *testing.T) {
@@ -6535,16 +6562,17 @@ func TestScalarNumber_BinaryDNumber(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarNumber_HLNumber(t *testing.T) {
@@ -6622,16 +6650,17 @@ func TestScalarNumber_HLNumber(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarNumber_HDNumber(t *testing.T) {
@@ -6709,16 +6738,17 @@ func TestScalarNumber_HDNumber(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarString_DoubleQuotedScalarString(t *testing.T) {
@@ -6796,16 +6826,17 @@ func TestScalarString_DoubleQuotedScalarString(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarString_DoubleQuotedScalarStringWithEscapedVar(t *testing.T) {
@@ -6883,16 +6914,17 @@ func TestScalarString_DoubleQuotedScalarStringWithEscapedVar(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarString_MultilineDoubleQuotedScalarString(t *testing.T) {
@@ -6972,16 +7004,17 @@ func TestScalarString_MultilineDoubleQuotedScalarString(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarString_SingleQuotedScalarString(t *testing.T) {
@@ -7059,16 +7092,17 @@ func TestScalarString_SingleQuotedScalarString(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestScalarString_MultilineSingleQuotedScalarString(t *testing.T) {
@@ -7148,16 +7182,17 @@ func TestScalarString_MultilineSingleQuotedScalarString(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 // stmt
@@ -7303,7 +7338,7 @@ func TestStmtAltIf_AltIf(t *testing.T) {
 						StartPos:  -1,
 						EndPos:    -1,
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 				},
 				EndIfTkn: &token.Token{
 					ID:    token.T_ENDIF,
@@ -7356,16 +7391,17 @@ func TestStmtAltIf_AltIf(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtAltIf_AltElseIf(t *testing.T) {
@@ -7510,7 +7546,7 @@ func TestStmtAltIf_AltElseIf(t *testing.T) {
 						StartPos:  -1,
 						EndPos:    -1,
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 				},
 				ElseIf: []ast.Vertex{
 					&ast.StmtElseIf{
@@ -7618,7 +7654,7 @@ func TestStmtAltIf_AltElseIf(t *testing.T) {
 								StartPos:  -1,
 								EndPos:    -1,
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 						},
 					},
 				},
@@ -7673,16 +7709,17 @@ func TestStmtAltIf_AltElseIf(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtAltIf_AltElse(t *testing.T) {
@@ -7827,7 +7864,7 @@ func TestStmtAltIf_AltElse(t *testing.T) {
 						StartPos:  -1,
 						EndPos:    -1,
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 				},
 				Else: &ast.StmtElse{
 					Position: &position.Position{
@@ -7875,7 +7912,7 @@ func TestStmtAltIf_AltElse(t *testing.T) {
 							StartPos:  -1,
 							EndPos:    -1,
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 					},
 				},
 				EndIfTkn: &token.Token{
@@ -7929,16 +7966,17 @@ func TestStmtAltIf_AltElse(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtAltIf_AltElseElseIf(t *testing.T) {
@@ -8085,7 +8123,7 @@ func TestStmtAltIf_AltElseElseIf(t *testing.T) {
 						StartPos:  -1,
 						EndPos:    -1,
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 				},
 				ElseIf: []ast.Vertex{
 					&ast.StmtElseIf{
@@ -8193,7 +8231,7 @@ func TestStmtAltIf_AltElseElseIf(t *testing.T) {
 								StartPos:  -1,
 								EndPos:    -1,
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 						},
 					},
 					&ast.StmtElseIf{
@@ -8301,7 +8339,7 @@ func TestStmtAltIf_AltElseElseIf(t *testing.T) {
 								StartPos:  -1,
 								EndPos:    -1,
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 						},
 					},
 				},
@@ -8351,7 +8389,7 @@ func TestStmtAltIf_AltElseElseIf(t *testing.T) {
 							StartPos:  -1,
 							EndPos:    -1,
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 					},
 				},
 				EndIfTkn: &token.Token{
@@ -8405,16 +8443,17 @@ func TestStmtAltIf_AltElseElseIf(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClassConstList(t *testing.T) {
@@ -8809,16 +8848,17 @@ func TestStmtClassConstList(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClassConstList_WithoutModifiers(t *testing.T) {
@@ -9180,16 +9220,17 @@ func TestStmtClassConstList_WithoutModifiers(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClassMethod_SimpleClassMethod(t *testing.T) {
@@ -9393,7 +9434,7 @@ func TestStmtClassMethod_SimpleClassMethod(t *testing.T) {
 									},
 								},
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 							CloseCurlyBracketTkn: &token.Token{
 								ID:    token.ID(125),
 								Value: []byte("}"),
@@ -9435,16 +9476,17 @@ func TestStmtClassMethod_SimpleClassMethod(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClassMethod_PrivateProtectedClassMethod(t *testing.T) {
@@ -9712,7 +9754,7 @@ func TestStmtClassMethod_PrivateProtectedClassMethod(t *testing.T) {
 									},
 								},
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 							CloseCurlyBracketTkn: &token.Token{
 								ID:    token.ID(125),
 								Value: []byte("}"),
@@ -9867,7 +9909,7 @@ func TestStmtClassMethod_PrivateProtectedClassMethod(t *testing.T) {
 									},
 								},
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 							CloseCurlyBracketTkn: &token.Token{
 								ID:    token.ID(125),
 								Value: []byte("}"),
@@ -9909,16 +9951,17 @@ func TestStmtClassMethod_PrivateProtectedClassMethod(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClassMethod_Php8ClassMethod(t *testing.T) {
@@ -10247,7 +10290,7 @@ func TestStmtClassMethod_Php8ClassMethod(t *testing.T) {
 									},
 								},
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 							CloseCurlyBracketTkn: &token.Token{
 								ID:    token.ID(125),
 								Value: []byte("}"),
@@ -10289,16 +10332,17 @@ func TestStmtClassMethod_Php8ClassMethod(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClassMethod_AbstractClassMethod(t *testing.T) {
@@ -10618,16 +10662,17 @@ func TestStmtClassMethod_AbstractClassMethod(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClassMethod_Php8AbstractClassMethod(t *testing.T) {
@@ -10967,16 +11012,17 @@ func TestStmtClassMethod_Php8AbstractClassMethod(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClass_SimpleClass(t *testing.T) {
@@ -11070,7 +11116,7 @@ func TestStmtClass_SimpleClass(t *testing.T) {
 						EndPos:    13,
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -11099,16 +11145,17 @@ func TestStmtClass_SimpleClass(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClass_AbstractClass(t *testing.T) {
@@ -11235,7 +11282,7 @@ func TestStmtClass_AbstractClass(t *testing.T) {
 						EndPos:    22,
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -11264,16 +11311,17 @@ func TestStmtClass_AbstractClass(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClass_ClassExtends(t *testing.T) {
@@ -11475,7 +11523,7 @@ func TestStmtClass_ClassExtends(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -11504,16 +11552,17 @@ func TestStmtClass_ClassExtends(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClass_ClassImplement(t *testing.T) {
@@ -11717,7 +11766,7 @@ func TestStmtClass_ClassImplement(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -11746,16 +11795,17 @@ func TestStmtClass_ClassImplement(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClass_ClassImplements(t *testing.T) {
@@ -12012,7 +12062,7 @@ func TestStmtClass_ClassImplements(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -12041,16 +12091,17 @@ func TestStmtClass_ClassImplements(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtClass_AnonimousClass(t *testing.T) {
@@ -12362,7 +12413,7 @@ func TestStmtClass_AnonimousClass(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -12403,16 +12454,17 @@ func TestStmtClass_AnonimousClass(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtConstList(t *testing.T) {
@@ -12679,16 +12731,17 @@ func TestStmtConstList(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtContinue_Empty(t *testing.T) {
@@ -12892,16 +12945,17 @@ func TestStmtContinue_Empty(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtContinue_Light(t *testing.T) {
@@ -13136,16 +13190,17 @@ func TestStmtContinue_Light(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtContinue(t *testing.T) {
@@ -13396,16 +13451,17 @@ func TestStmtContinue(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtDeclare(t *testing.T) {
@@ -13560,16 +13616,17 @@ func TestStmtDeclare(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtDeclare_Stmts(t *testing.T) {
@@ -13809,7 +13866,7 @@ func TestStmtDeclare_Stmts(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -13827,16 +13884,17 @@ func TestStmtDeclare_Stmts(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtDeclare_Alt(t *testing.T) {
@@ -13984,7 +14042,7 @@ func TestStmtDeclare_Alt(t *testing.T) {
 						StartPos:  -1,
 						EndPos:    -1,
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 				},
 				EndDeclareTkn: &token.Token{
 					ID:    token.T_ENDDECLARE,
@@ -14024,16 +14082,17 @@ func TestStmtDeclare_Alt(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtDo(t *testing.T) {
@@ -14115,7 +14174,7 @@ func TestStmtDo(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -14204,16 +14263,17 @@ func TestStmtDo(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtEcho(t *testing.T) {
@@ -14366,16 +14426,17 @@ func TestStmtEcho(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtEcho_Parenthesis(t *testing.T) {
@@ -14501,16 +14562,17 @@ func TestStmtEcho_Parenthesis(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtExpression(t *testing.T) {
@@ -14588,16 +14650,17 @@ func TestStmtExpression(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtFor(t *testing.T) {
@@ -15039,7 +15102,7 @@ func TestStmtFor(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -15057,16 +15120,17 @@ func TestStmtFor(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtFor_Alt(t *testing.T) {
@@ -15349,7 +15413,7 @@ func TestStmtFor_Alt(t *testing.T) {
 						StartPos:  -1,
 						EndPos:    -1,
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 				},
 				EndForTkn: &token.Token{
 					ID:    token.T_ENDFOR,
@@ -15389,16 +15453,17 @@ func TestStmtFor_Alt(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtForeach(t *testing.T) {
@@ -15600,7 +15665,7 @@ func TestStmtForeach(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -15618,16 +15683,17 @@ func TestStmtForeach(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtForeach_Expr(t *testing.T) {
@@ -15830,7 +15896,7 @@ func TestStmtForeach_Expr(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -15848,16 +15914,17 @@ func TestStmtForeach_Expr(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtForeach_Alt(t *testing.T) {
@@ -16059,7 +16126,7 @@ func TestStmtForeach_Alt(t *testing.T) {
 						StartPos:  -1,
 						EndPos:    -1,
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 				},
 				EndForeachTkn: &token.Token{
 					ID:    token.T_ENDFOREACH,
@@ -16099,16 +16166,17 @@ func TestStmtForeach_Alt(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtForeach_WithKey(t *testing.T) {
@@ -16371,7 +16439,7 @@ func TestStmtForeach_WithKey(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -16389,16 +16457,17 @@ func TestStmtForeach_WithKey(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtForeach_ExprWithKey(t *testing.T) {
@@ -16662,7 +16731,7 @@ func TestStmtForeach_ExprWithKey(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -16680,16 +16749,17 @@ func TestStmtForeach_ExprWithKey(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtForeach_WithRef(t *testing.T) {
@@ -16962,7 +17032,7 @@ func TestStmtForeach_WithRef(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -16980,16 +17050,17 @@ func TestStmtForeach_WithRef(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtForeach_WithList(t *testing.T) {
@@ -17300,7 +17371,7 @@ func TestStmtForeach_WithList(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -17318,16 +17389,17 @@ func TestStmtForeach_WithList(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtFunction(t *testing.T) {
@@ -17453,7 +17525,7 @@ func TestStmtFunction(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -17470,16 +17542,17 @@ func TestStmtFunction(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtFunction_Return(t *testing.T) {
@@ -17651,16 +17724,17 @@ func TestStmtFunction_Return(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtFunction_ReturnVar(t *testing.T) {
@@ -18029,16 +18103,17 @@ func TestStmtFunction_ReturnVar(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtFunction_Ref(t *testing.T) {
@@ -18251,16 +18326,17 @@ func TestStmtFunction_Ref(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtFunction_ReturnType(t *testing.T) {
@@ -18447,7 +18523,7 @@ func TestStmtFunction_ReturnType(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -18464,16 +18540,17 @@ func TestStmtFunction_ReturnType(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtGlobal(t *testing.T) {
@@ -18583,16 +18660,17 @@ func TestStmtGlobal(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtGlobal_Vars(t *testing.T) {
@@ -18937,16 +19015,17 @@ func TestStmtGlobal_Vars(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtGotoLabel(t *testing.T) {
@@ -19095,16 +19174,17 @@ func TestStmtGotoLabel(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtHaltCompiler(t *testing.T) {
@@ -19193,16 +19273,17 @@ func TestStmtHaltCompiler(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtIf(t *testing.T) {
@@ -19343,7 +19424,7 @@ func TestStmtIf(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -19361,16 +19442,17 @@ func TestStmtIf(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtIf_ElseIf(t *testing.T) {
@@ -19511,7 +19593,7 @@ func TestStmtIf_ElseIf(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -19641,7 +19723,7 @@ func TestStmtIf_ElseIf(t *testing.T) {
 									},
 								},
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 							CloseCurlyBracketTkn: &token.Token{
 								ID:    token.ID(125),
 								Value: []byte("}"),
@@ -19661,16 +19743,17 @@ func TestStmtIf_ElseIf(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtIf_Else(t *testing.T) {
@@ -19811,7 +19894,7 @@ func TestStmtIf_Else(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -19881,7 +19964,7 @@ func TestStmtIf_Else(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -19900,16 +19983,17 @@ func TestStmtIf_Else(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtIf_ElseElseIf(t *testing.T) {
@@ -20050,7 +20134,7 @@ func TestStmtIf_ElseElseIf(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -20180,7 +20264,7 @@ func TestStmtIf_ElseElseIf(t *testing.T) {
 									},
 								},
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 							CloseCurlyBracketTkn: &token.Token{
 								ID:    token.ID(125),
 								Value: []byte("}"),
@@ -20310,7 +20394,7 @@ func TestStmtIf_ElseElseIf(t *testing.T) {
 									},
 								},
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 							CloseCurlyBracketTkn: &token.Token{
 								ID:    token.ID(125),
 								Value: []byte("}"),
@@ -20382,7 +20466,7 @@ func TestStmtIf_ElseElseIf(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -20401,16 +20485,17 @@ func TestStmtIf_ElseElseIf(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtIf_ElseIfElseIfElse(t *testing.T) {
@@ -20551,7 +20636,7 @@ func TestStmtIf_ElseIfElseIfElse(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -20681,7 +20766,7 @@ func TestStmtIf_ElseIfElseIfElse(t *testing.T) {
 									},
 								},
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 							CloseCurlyBracketTkn: &token.Token{
 								ID:    token.ID(125),
 								Value: []byte("}"),
@@ -20841,7 +20926,7 @@ func TestStmtIf_ElseIfElseIfElse(t *testing.T) {
 									},
 								},
 							},
-							Stmts: []ast.Vertex{},
+							Stmts: nil,
 							CloseCurlyBracketTkn: &token.Token{
 								ID:    token.ID(125),
 								Value: []byte("}"),
@@ -20911,7 +20996,7 @@ func TestStmtIf_ElseIfElseIfElse(t *testing.T) {
 										},
 									},
 								},
-								Stmts: []ast.Vertex{},
+								Stmts: nil,
 								CloseCurlyBracketTkn: &token.Token{
 									ID:    token.ID(125),
 									Value: []byte("}"),
@@ -20932,16 +21017,17 @@ func TestStmtIf_ElseIfElseIfElse(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtInlineHtml(t *testing.T) {
@@ -21019,16 +21105,17 @@ func TestStmtInlineHtml(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtInterface(t *testing.T) {
@@ -21134,7 +21221,7 @@ func TestStmtInterface(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -21151,16 +21238,17 @@ func TestStmtInterface(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtInterface_Extend(t *testing.T) {
@@ -21331,7 +21419,7 @@ func TestStmtInterface_Extend(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -21348,16 +21436,17 @@ func TestStmtInterface_Extend(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtInterface_Extends(t *testing.T) {
@@ -21581,7 +21670,7 @@ func TestStmtInterface_Extends(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -21598,16 +21687,17 @@ func TestStmtInterface_Extends(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtNamespace(t *testing.T) {
@@ -21717,16 +21807,17 @@ func TestStmtNamespace(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtNamespace_Stmts(t *testing.T) {
@@ -21842,7 +21933,7 @@ func TestStmtNamespace_Stmts(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -21859,16 +21950,17 @@ func TestStmtNamespace_Stmts(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtNamespace_Anonymous(t *testing.T) {
@@ -21943,7 +22035,7 @@ func TestStmtNamespace_Anonymous(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -21960,16 +22052,17 @@ func TestStmtNamespace_Anonymous(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtProperty(t *testing.T) {
@@ -22181,16 +22274,17 @@ func TestStmtProperty(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtProperty_Properties(t *testing.T) {
@@ -22545,16 +22639,17 @@ func TestStmtProperty_Properties(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtProperty_Properties2(t *testing.T) {
@@ -22909,16 +23004,17 @@ func TestStmtProperty_Properties2(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtProperty_PropertyType(t *testing.T) {
@@ -23171,16 +23267,17 @@ func TestStmtProperty_PropertyType(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtStaticVar(t *testing.T) {
@@ -23298,16 +23395,17 @@ func TestStmtStaticVar(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtStaticVar_Vars(t *testing.T) {
@@ -23537,16 +23635,17 @@ func TestStmtStaticVar_Vars(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtStaticVar_Vars2(t *testing.T) {
@@ -23776,16 +23875,17 @@ func TestStmtStaticVar_Vars2(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtSwitch(t *testing.T) {
@@ -24185,16 +24285,17 @@ func TestStmtSwitch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtSwitch_Semicolon(t *testing.T) {
@@ -24604,16 +24705,17 @@ func TestStmtSwitch_Semicolon(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtSwitch_Alt(t *testing.T) {
@@ -24816,7 +24918,7 @@ func TestStmtSwitch_Alt(t *testing.T) {
 								EndPos:    28,
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 					},
 					&ast.StmtDefault{
 						Position: &position.Position{
@@ -24857,7 +24959,7 @@ func TestStmtSwitch_Alt(t *testing.T) {
 								EndPos:    40,
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 					},
 					&ast.StmtCase{
 						Position: &position.Position{
@@ -24929,7 +25031,7 @@ func TestStmtSwitch_Alt(t *testing.T) {
 								EndPos:    51,
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 					},
 				},
 				EndSwitchTkn: &token.Token{
@@ -24983,16 +25085,17 @@ func TestStmtSwitch_Alt(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtSwitch_AltSemicolon(t *testing.T) {
@@ -25203,7 +25306,7 @@ func TestStmtSwitch_AltSemicolon(t *testing.T) {
 								EndPos:    29,
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 					},
 					&ast.StmtCase{
 						Position: &position.Position{
@@ -25275,7 +25378,7 @@ func TestStmtSwitch_AltSemicolon(t *testing.T) {
 								EndPos:    40,
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 					},
 				},
 				EndSwitchTkn: &token.Token{
@@ -25316,16 +25419,17 @@ func TestStmtSwitch_AltSemicolon(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtThrow(t *testing.T) {
@@ -25433,16 +25537,17 @@ func TestStmtThrow(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTrait(t *testing.T) {
@@ -25548,7 +25653,7 @@ func TestStmtTrait(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -25565,16 +25670,17 @@ func TestStmtTrait(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTraitUse(t *testing.T) {
@@ -25793,16 +25899,17 @@ func TestStmtTraitUse(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTraitUse_Uses(t *testing.T) {
@@ -26074,16 +26181,17 @@ func TestStmtTraitUse_Uses(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTraitUse_EmptyAdaptations(t *testing.T) {
@@ -26377,16 +26485,17 @@ func TestStmtTraitUse_EmptyAdaptations(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTraitUse_Modifier(t *testing.T) {
@@ -26796,16 +26905,17 @@ func TestStmtTraitUse_Modifier(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTraitUse_AliasModifier(t *testing.T) {
@@ -27246,16 +27356,17 @@ func TestStmtTraitUse_AliasModifier(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTraitUse_Adaptions(t *testing.T) {
@@ -27910,16 +28021,17 @@ func TestStmtTraitUse_Adaptions(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTry_Try(t *testing.T) {
@@ -27996,7 +28108,7 @@ func TestStmtTry_Try(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -28026,16 +28138,17 @@ func TestStmtTry_Try(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTry_TryCatch(t *testing.T) {
@@ -28112,7 +28225,7 @@ func TestStmtTry_TryCatch(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -28277,7 +28390,7 @@ func TestStmtTry_TryCatch(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -28309,16 +28422,17 @@ func TestStmtTry_TryCatch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTry_Php8TryCatch(t *testing.T) {
@@ -28395,7 +28509,7 @@ func TestStmtTry_Php8TryCatch(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -28601,7 +28715,7 @@ func TestStmtTry_Php8TryCatch(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -28633,16 +28747,17 @@ func TestStmtTry_Php8TryCatch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTry_TryCatchCatch(t *testing.T) {
@@ -28719,7 +28834,7 @@ func TestStmtTry_TryCatchCatch(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -28884,7 +28999,7 @@ func TestStmtTry_TryCatchCatch(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -29049,7 +29164,7 @@ func TestStmtTry_TryCatchCatch(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -29081,16 +29196,17 @@ func TestStmtTry_TryCatchCatch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTry_TryCatchFinally(t *testing.T) {
@@ -29167,7 +29283,7 @@ func TestStmtTry_TryCatchFinally(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -29332,7 +29448,7 @@ func TestStmtTry_TryCatchFinally(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -29396,7 +29512,7 @@ func TestStmtTry_TryCatchFinally(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -29427,16 +29543,17 @@ func TestStmtTry_TryCatchFinally(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtTry_TryCatchCatchCatch(t *testing.T) {
@@ -29511,7 +29628,7 @@ func TestStmtTry_TryCatchCatchCatch(t *testing.T) {
 						},
 					},
 				},
-				Stmts: []ast.Vertex{},
+				Stmts: nil,
 				CloseCurlyBracketTkn: &token.Token{
 					ID:    token.ID(125),
 					Value: []byte("}"),
@@ -29676,7 +29793,7 @@ func TestStmtTry_TryCatchCatchCatch(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -29851,7 +29968,7 @@ func TestStmtTry_TryCatchCatchCatch(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -30036,7 +30153,7 @@ func TestStmtTry_TryCatchCatchCatch(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -30055,16 +30172,17 @@ func TestStmtTry_TryCatchCatchCatch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUnset(t *testing.T) {
@@ -30182,16 +30300,17 @@ func TestStmtUnset(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUnset_Vars(t *testing.T) {
@@ -30360,16 +30479,17 @@ func TestStmtUnset_Vars(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUnset_TrailingComma(t *testing.T) {
@@ -30548,16 +30668,17 @@ func TestStmtUnset_TrailingComma(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse(t *testing.T) {
@@ -30677,16 +30798,17 @@ func TestStmtUse(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_FullyQualified(t *testing.T) {
@@ -30816,16 +30938,17 @@ func TestStmtUse_FullyQualified(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_FullyQualifiedAlias(t *testing.T) {
@@ -31008,16 +31131,17 @@ func TestStmtUse_FullyQualifiedAlias(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_List(t *testing.T) {
@@ -31198,16 +31322,17 @@ func TestStmtUse_List(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_ListAlias(t *testing.T) {
@@ -31441,16 +31566,17 @@ func TestStmtUse_ListAlias(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_ListFunctionType(t *testing.T) {
@@ -31672,16 +31798,17 @@ func TestStmtUse_ListFunctionType(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_ListFunctionTypeAliases(t *testing.T) {
@@ -32009,16 +32136,17 @@ func TestStmtUse_ListFunctionTypeAliases(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_ListConstType(t *testing.T) {
@@ -32240,16 +32368,17 @@ func TestStmtUse_ListConstType(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_ListConstTypeAliases(t *testing.T) {
@@ -32577,16 +32706,17 @@ func TestStmtUse_ListConstTypeAliases(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_GroupUse(t *testing.T) {
@@ -32826,16 +32956,17 @@ func TestStmtUse_GroupUse(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_GroupUseAlias(t *testing.T) {
@@ -33128,16 +33259,17 @@ func TestStmtUse_GroupUseAlias(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_FunctionGroupUse(t *testing.T) {
@@ -33408,16 +33540,17 @@ func TestStmtUse_FunctionGroupUse(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_ConstGroupUse(t *testing.T) {
@@ -33688,16 +33821,17 @@ func TestStmtUse_ConstGroupUse(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtUse_MixedGroupUse(t *testing.T) {
@@ -33999,16 +34133,17 @@ func TestStmtUse_MixedGroupUse(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtBreak_Empty(t *testing.T) {
@@ -34212,16 +34347,17 @@ func TestStmtBreak_Empty(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtBreak_Light(t *testing.T) {
@@ -34456,16 +34592,17 @@ func TestStmtBreak_Light(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestStmtBreak(t *testing.T) {
@@ -34726,16 +34863,17 @@ func TestStmtBreak(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 // expr
@@ -34870,16 +35008,17 @@ func TestExprArrayDimFetch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprArrayDimFetch_Nested(t *testing.T) {
@@ -35059,16 +35198,17 @@ func TestExprArrayDimFetch_Nested(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprArray(t *testing.T) {
@@ -35165,16 +35305,17 @@ func TestExprArray(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprArray_Item(t *testing.T) {
@@ -35300,16 +35441,17 @@ func TestExprArray_Item(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprArray_Items(t *testing.T) {
@@ -35544,16 +35686,17 @@ func TestExprArray_Items(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprArray_ItemUnpack(t *testing.T) {
@@ -35697,16 +35840,17 @@ func TestExprArray_ItemUnpack(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprArrowFunction(t *testing.T) {
@@ -35864,16 +36008,17 @@ func TestExprArrowFunction(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprArrowFunction_ReturnType(t *testing.T) {
@@ -36128,16 +36273,17 @@ func TestExprArrowFunction_ReturnType(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprBitwiseNot(t *testing.T) {
@@ -36241,16 +36387,17 @@ func TestExprBitwiseNot(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprBooleanNot(t *testing.T) {
@@ -36354,16 +36501,17 @@ func TestExprBooleanNot(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprClassConstFetch(t *testing.T) {
@@ -36488,16 +36636,17 @@ func TestExprClassConstFetch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprClassConstFetch_Static(t *testing.T) {
@@ -36612,16 +36761,17 @@ func TestExprClassConstFetch_Static(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprClone_Brackets(t *testing.T) {
@@ -36753,16 +36903,17 @@ func TestExprClone_Brackets(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprClone(t *testing.T) {
@@ -36878,16 +37029,17 @@ func TestExprClone(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprClosure(t *testing.T) {
@@ -36977,7 +37129,7 @@ func TestExprClosure(t *testing.T) {
 							EndPos:    14,
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -37005,16 +37157,17 @@ func TestExprClosure(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprClosure_Use(t *testing.T) {
@@ -37372,7 +37525,7 @@ func TestExprClosure_Use(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -37400,16 +37553,17 @@ func TestExprClosure_Use(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprClosure_Use2(t *testing.T) {
@@ -37767,7 +37921,7 @@ func TestExprClosure_Use2(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -37795,16 +37949,17 @@ func TestExprClosure_Use2(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprClosure_ReturnType(t *testing.T) {
@@ -37957,7 +38112,7 @@ func TestExprClosure_ReturnType(t *testing.T) {
 							},
 						},
 					},
-					Stmts: []ast.Vertex{},
+					Stmts: nil,
 					CloseCurlyBracketTkn: &token.Token{
 						ID:    token.ID(125),
 						Value: []byte("}"),
@@ -37985,16 +38140,17 @@ func TestExprClosure_ReturnType(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprConstFetch(t *testing.T) {
@@ -38090,16 +38246,17 @@ func TestExprConstFetch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprConstFetch_Relative(t *testing.T) {
@@ -38215,16 +38372,17 @@ func TestExprConstFetch_Relative(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprConstFetch_FullyQualified(t *testing.T) {
@@ -38330,16 +38488,17 @@ func TestExprConstFetch_FullyQualified(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprEmpty(t *testing.T) {
@@ -38463,16 +38622,17 @@ func TestExprEmpty(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprErrorSuppress(t *testing.T) {
@@ -38576,16 +38736,17 @@ func TestExprErrorSuppress(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprEval(t *testing.T) {
@@ -38709,16 +38870,17 @@ func TestExprEval(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprExit(t *testing.T) {
@@ -38795,16 +38957,17 @@ func TestExprExit(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprExit_Empty(t *testing.T) {
@@ -38901,16 +39064,17 @@ func TestExprExit_Empty(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprExit_Expr(t *testing.T) {
@@ -39034,16 +39198,17 @@ func TestExprExit_Expr(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprDie(t *testing.T) {
@@ -39120,16 +39285,17 @@ func TestExprDie(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprDie_Empty(t *testing.T) {
@@ -39226,16 +39392,17 @@ func TestExprDie_Empty(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprDie_Expr(t *testing.T) {
@@ -39359,16 +39526,17 @@ func TestExprDie_Expr(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprFunctionCall(t *testing.T) {
@@ -39484,16 +39652,17 @@ func TestExprFunctionCall(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprFunctionCall_Relative(t *testing.T) {
@@ -39629,16 +39798,17 @@ func TestExprFunctionCall_Relative(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprFunctionCall_FullyQualified(t *testing.T) {
@@ -39802,16 +39972,17 @@ func TestExprFunctionCall_FullyQualified(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprFunctionCall_Var(t *testing.T) {
@@ -39992,16 +40163,17 @@ func TestExprFunctionCall_Var(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprFunctionCall_ExprArg(t *testing.T) {
@@ -40191,16 +40363,17 @@ func TestExprFunctionCall_ExprArg(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprPostDec(t *testing.T) {
@@ -40304,16 +40477,17 @@ func TestExprPostDec(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprPostInc(t *testing.T) {
@@ -40417,16 +40591,17 @@ func TestExprPostInc(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprPreDec(t *testing.T) {
@@ -40530,16 +40705,17 @@ func TestExprPreDec(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprPreInc(t *testing.T) {
@@ -40643,16 +40819,17 @@ func TestExprPreInc(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprInclude(t *testing.T) {
@@ -40768,16 +40945,17 @@ func TestExprInclude(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprInclude_Once(t *testing.T) {
@@ -40893,16 +41071,17 @@ func TestExprInclude_Once(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprRequire(t *testing.T) {
@@ -41018,16 +41197,17 @@ func TestExprRequire(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprRequire_Once(t *testing.T) {
@@ -41143,16 +41323,17 @@ func TestExprRequire_Once(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprInstanceOf(t *testing.T) {
@@ -41309,16 +41490,17 @@ func TestExprInstanceOf(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprInstanceOf_Relative(t *testing.T) {
@@ -41495,16 +41677,17 @@ func TestExprInstanceOf_Relative(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprInstanceOf_FullyQualified(t *testing.T) {
@@ -41671,16 +41854,17 @@ func TestExprInstanceOf_FullyQualified(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprIsset(t *testing.T) {
@@ -41806,16 +41990,17 @@ func TestExprIsset(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprIsset_Variables(t *testing.T) {
@@ -41992,16 +42177,17 @@ func TestExprIsset_Variables(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprList_Empty(t *testing.T) {
@@ -42167,16 +42353,17 @@ func TestExprList_Empty(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprList(t *testing.T) {
@@ -42379,16 +42566,17 @@ func TestExprList(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprList_ArrayIndex(t *testing.T) {
@@ -42619,16 +42807,17 @@ func TestExprList_ArrayIndex(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprList_List(t *testing.T) {
@@ -42879,16 +43068,17 @@ func TestExprList_List(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprList_EmptyItem(t *testing.T) {
@@ -43116,16 +43306,17 @@ func TestExprList_EmptyItem(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprList_EmptyItems(t *testing.T) {
@@ -43399,16 +43590,17 @@ func TestExprList_EmptyItems(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprMethodCall(t *testing.T) {
@@ -43551,16 +43743,17 @@ func TestExprMethodCall(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprNew(t *testing.T) {
@@ -43678,16 +43871,17 @@ func TestExprNew(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprNew_Relative(t *testing.T) {
@@ -43845,16 +44039,17 @@ func TestExprNew_Relative(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprNew_FullyQualified(t *testing.T) {
@@ -44002,16 +44197,17 @@ func TestExprNew_FullyQualified(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprNew_Anonymous(t *testing.T) {
@@ -44260,7 +44456,7 @@ func TestExprNew_Anonymous(t *testing.T) {
 								},
 							},
 						},
-						Stmts: []ast.Vertex{},
+						Stmts: nil,
 						CloseCurlyBracketTkn: &token.Token{
 							ID:    token.ID(125),
 							Value: []byte("}"),
@@ -44289,16 +44485,17 @@ func TestExprNew_Anonymous(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprPrint(t *testing.T) {
@@ -44430,16 +44627,17 @@ func TestExprPrint(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprPropertyFetch(t *testing.T) {
@@ -44562,16 +44760,17 @@ func TestExprPropertyFetch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprShellExec(t *testing.T) {
@@ -44706,16 +44905,17 @@ func TestExprShellExec(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprShortArray(t *testing.T) {
@@ -44802,16 +45002,17 @@ func TestExprShortArray(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprShortArray_Item(t *testing.T) {
@@ -44927,16 +45128,17 @@ func TestExprShortArray_Item(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprShortArray_Items(t *testing.T) {
@@ -45161,16 +45363,17 @@ func TestExprShortArray_Items(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprShortList(t *testing.T) {
@@ -45363,16 +45566,17 @@ func TestExprShortList(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprShortList_ArrayIndex(t *testing.T) {
@@ -45593,16 +45797,17 @@ func TestExprShortList_ArrayIndex(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprShortList_List(t *testing.T) {
@@ -45843,16 +46048,17 @@ func TestExprShortList_List(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprStaticCall(t *testing.T) {
@@ -45997,16 +46203,17 @@ func TestExprStaticCall(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprStaticCall_Relative(t *testing.T) {
@@ -46171,16 +46378,17 @@ func TestExprStaticCall_Relative(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprStaticCall_FullyQualified(t *testing.T) {
@@ -46335,16 +46543,17 @@ func TestExprStaticCall_FullyQualified(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprStaticCall_Var(t *testing.T) {
@@ -46497,16 +46706,17 @@ func TestExprStaticCall_Var(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprStaticCall_VarVar(t *testing.T) {
@@ -46657,16 +46867,17 @@ func TestExprStaticCall_VarVar(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprStaticPropertyFetch(t *testing.T) {
@@ -46799,16 +47010,17 @@ func TestExprStaticPropertyFetch(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprStaticPropertyFetch_Relative(t *testing.T) {
@@ -46961,16 +47173,17 @@ func TestExprStaticPropertyFetch_Relative(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprStaticPropertyFetch_FullyQualified(t *testing.T) {
@@ -47113,16 +47326,17 @@ func TestExprStaticPropertyFetch_FullyQualified(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprTernary(t *testing.T) {
@@ -47338,16 +47552,17 @@ func TestExprTernary(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprTernary_Simple(t *testing.T) {
@@ -47524,16 +47739,17 @@ func TestExprTernary_Simple(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprTernary_NestedTrue(t *testing.T) {
@@ -47879,16 +48095,17 @@ func TestExprTernary_NestedTrue(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprTernary_NestedCond(t *testing.T) {
@@ -48234,16 +48451,17 @@ func TestExprTernary_NestedCond(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprUnaryMinus(t *testing.T) {
@@ -48347,16 +48565,17 @@ func TestExprUnaryMinus(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprUnaryPlus(t *testing.T) {
@@ -48460,16 +48679,17 @@ func TestExprUnaryPlus(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprVariable(t *testing.T) {
@@ -48555,16 +48775,17 @@ func TestExprVariable(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprVariable_Variable(t *testing.T) {
@@ -48668,16 +48889,17 @@ func TestExprVariable_Variable(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprYield(t *testing.T) {
@@ -48754,16 +48976,17 @@ func TestExprYield(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprYield_Val(t *testing.T) {
@@ -48879,16 +49102,17 @@ func TestExprYield_Val(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprYield_KeyVal(t *testing.T) {
@@ -49065,16 +49289,17 @@ func TestExprYield_KeyVal(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprYield_Expr(t *testing.T) {
@@ -49182,16 +49407,17 @@ func TestExprYield_Expr(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprYield_KeyExpr(t *testing.T) {
@@ -49360,16 +49586,17 @@ func TestExprYield_KeyExpr(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestExprYieldFrom(t *testing.T) {
@@ -49485,16 +49712,17 @@ func TestExprYieldFrom(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 // expr assign
@@ -51835,16 +52063,17 @@ func TestExprAssign_Assign(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 // expr binary
@@ -55304,16 +55533,17 @@ func TestExprBinary_BitwiseAnd(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 // expr cast
@@ -55612,16 +55842,17 @@ func TestStrings(t *testing.T) {
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestHeredoc(t *testing.T) {
@@ -56098,16 +56329,17 @@ CAD;
 	}
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	actual := php8parser.GetRootNode()
-	assert.DeepEqual(t, expected, actual)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	actual := phpparser.GetRootNode()
+	assert.DeepEqual(t, expected, actual, ignorePositionColumns)
 }
 
 func TestControlCharsErrors(t *testing.T) {
@@ -56127,6 +56359,7 @@ func TestControlCharsErrors(t *testing.T) {
 	var parserErrors []*errors.Error
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 7,
 			Minor: 4,
@@ -56135,8 +56368,8 @@ func TestControlCharsErrors(t *testing.T) {
 			parserErrors = append(parserErrors, e)
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
-	assert.DeepEqual(t, expected, parserErrors)
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
+	assert.DeepEqual(t, expected, parserErrors, ignorePositionColumns)
 }

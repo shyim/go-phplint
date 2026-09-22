@@ -1,12 +1,11 @@
-package php7
+package php
 
 import (
 	"bytes"
-	"strings"
 
-	"github.com/shyim/go-phplint/internal/posbuilder"
 	"github.com/shyim/go-phplint/internal/conf"
 	"github.com/shyim/go-phplint/internal/errors"
+	"github.com/shyim/go-phplint/internal/posbuilder"
 	"github.com/shyim/go-phplint/internal/position"
 	"github.com/shyim/go-phplint/internal/token"
 	"github.com/shyim/go-phplint/internal/version"
@@ -17,7 +16,11 @@ type Lexer struct {
 	phpVersion     *version.Version
 	errHandlerFunc func(*errors.Error)
 
-	p, pe, cs   int
+	// p: current position being lexed/checked.
+	// pe: length in bytes of input.
+	p, pe, cs int
+	// ts: start position of the current token.
+	// te: end position of the current token.
 	ts, te, act int
 	stack       []int
 	top         int
@@ -26,6 +29,10 @@ type Lexer struct {
 	tokenPool    *token.Pool
 	positionPool *position.Pool
 	newLines     posbuilder.NewLines
+
+	// retainFreeFloating attaches whitespace and comments to the next token.
+	// Lint parsing leaves this false.
+	retainFreeFloating bool
 }
 
 func NewLexer(data []byte, config conf.Config) *Lexer {
@@ -37,9 +44,10 @@ func NewLexer(data []byte, config conf.Config) *Lexer {
 		pe:    len(data),
 		stack: make([]int, 0),
 
-		tokenPool:    token.NewPool(position.DefaultBlockSize),
-		positionPool: position.NewPool(token.DefaultBlockSize),
-		newLines:     posbuilder.NewNewLines(),
+		tokenPool:          token.NewPool(token.DefaultBlockSize),
+		positionPool:       position.NewPool(position.DefaultBlockSize),
+		newLines:           posbuilder.NewNewLines(),
+		retainFreeFloating: config.Fidelity,
 	}
 
 	initLexer(lex)
@@ -64,6 +72,10 @@ func (lex *Lexer) setTokenPosition(token *token.Token) {
 }
 
 func (lex *Lexer) addFreeFloatingToken(t *token.Token, id token.ID, ps, pe int) {
+	if !lex.retainFreeFloating {
+		return
+	}
+
 	skippedTkn := lex.tokenPool.Get()
 	skippedTkn.ID = id
 	skippedTkn.Value = lex.data[ps:pe]
@@ -107,17 +119,19 @@ func (lex *Lexer) isNotStringEnd(s byte) bool {
 	return !(lex.data[p] == s)
 }
 
+// versionAtLeast reports whether the target language profile is at least
+// the given major.minor version. A nil version is treated as the newest
+// profile so the unified scanner accepts the full superset.
+func (lex *Lexer) versionAtLeast(major, minor uint64) bool {
+	return lex.phpVersion.AtLeast(major, minor)
+}
+
 func (lex *Lexer) isHeredocEnd(p int) bool {
-	o, err := version.New("7.3")
-	if err != nil {
-		panic(err)
+	if !lex.versionAtLeast(7, 3) {
+		return lex.isHeredocEndBefore73(p)
 	}
 
-	if lex.phpVersion.GreaterOrEqual(o) {
-		return lex.isHeredocEndSince73(p)
-	}
-
-	return lex.isHeredocEndBefore73(p)
+	return lex.isHeredocEndSince73(p)
 }
 
 func (lex *Lexer) isHeredocEndBefore73(p int) bool {
@@ -162,11 +176,6 @@ func (lex *Lexer) isHeredocEndSince73(p int) bool {
 	if len(lex.data) > p+l && isValidVarName(lex.data[p+l]) {
 		return false
 	}
-
-	a := string(lex.heredocLabel)
-	b := string(lex.data[p : p+l])
-
-	_, _ = a, b
 
 	if bytes.Equal(lex.heredocLabel, lex.data[p:p+l]) {
 		lex.p = p
@@ -222,15 +231,32 @@ func (lex *Lexer) ret(n int) {
 }
 
 func (lex *Lexer) ungetStr(s string) {
-	tokenStr := string(lex.data[lex.ts:lex.te])
-	if strings.HasSuffix(tokenStr, s) {
-		lex.ungetCnt(len(s))
+	n := len(s)
+	if n == 0 || lex.te-lex.ts < n {
+		return
 	}
+	tail := lex.data[lex.te-n : lex.te]
+	for i := 0; i < n; i++ {
+		if tail[i] != s[i] {
+			return
+		}
+	}
+	lex.ungetCnt(n)
 }
 
 func (lex *Lexer) ungetCnt(n int) {
 	lex.p = lex.p - n
 	lex.te = lex.te - n
+}
+
+func (lex *Lexer) ungetWhile(s byte) {
+	for lex.te > 0 && lex.te < len(lex.data) && lex.p > 0 && lex.data[lex.te] != s {
+		lex.te--
+		lex.p--
+	}
+
+	lex.te++
+	lex.p++
 }
 
 func (lex *Lexer) error(msg string) {
@@ -257,5 +283,6 @@ func isValidVarNameStart(r byte) bool {
 }
 
 func isValidVarName(r byte) bool {
-	return (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r >= 0x80
+	return (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' ||
+		r >= 0x80
 }

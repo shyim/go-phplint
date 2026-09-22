@@ -1,11 +1,13 @@
 package phplint
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/shyim/go-phplint/internal/ast"
+	"github.com/shyim/go-phplint/internal/token"
 	"github.com/shyim/go-phplint/internal/visitor"
 	"github.com/shyim/go-phplint/internal/visitor/traverser"
 )
@@ -53,6 +55,16 @@ func (v *compileValidator) EnterNode(node ast.Vertex) bool {
 		v.validateClosure(current)
 	case *ast.ExprArrowFunction:
 		v.validateArrowFunction(current)
+	case *ast.ExprMatch:
+		v.requireVersion(current, PHP80, "match expressions")
+	case *ast.ExprNullsafeMethodCall:
+		v.requireVersion(current, PHP80, "the nullsafe operator")
+	case *ast.ExprNullsafePropertyFetch:
+		v.requireVersion(current, PHP80, "the nullsafe operator")
+	case *ast.ExprThrow:
+		v.requireVersion(current, PHP80, "throw expressions")
+	case *ast.Argument:
+		v.validateArgument(current)
 	case *ast.ExprAssignCoalesce:
 		v.requireVersion(current, PHP74, "null coalescing assignment")
 	case *ast.ExprArrayItem:
@@ -71,6 +83,8 @@ func (v *compileValidator) EnterNode(node ast.Vertex) bool {
 		v.validateLoopControl(current, "break", current.Expr)
 	case *ast.StmtContinue:
 		v.validateLoopControl(current, "continue", current.Expr)
+	case *ast.StmtCatch:
+		v.validateCatch(current)
 	case *ast.StmtReturn:
 		v.validateReturn(current)
 	case *ast.ExprYield:
@@ -94,8 +108,12 @@ func (v *compileValidator) EnterNode(node ast.Vertex) bool {
 		}
 	case *ast.ExprNew:
 		v.validateTrailingCallComma(current, len(current.Args), len(current.SeparatorTkns))
+	case *ast.ScalarLnumber:
+		v.validateNumberLiteral(current)
 	case *ast.StmtClassConstList:
 		v.validateClassConstants(current)
+	case *ast.StmtTraitUseAlias:
+		v.validateTraitAlias(current)
 	case *ast.EnumCase:
 		v.validateEnumCase(current)
 	case *ast.StmtConstList:
@@ -224,7 +242,11 @@ func (v *compileValidator) validateClassStatements(
 			v.trackDuplicate(methods, nodeName(current.Name), current, "method")
 		case *ast.StmtPropertyList:
 			if kind == "interface" {
-				v.report(current, "interfaces may not declare properties")
+				if !current.Hooked {
+					v.report(current, "interfaces may not declare properties")
+				} else if interfacePropertyVisibilityForbidden(current.Modifiers) {
+					v.report(current, "property in interface cannot be protected or private")
+				}
 			}
 			if kind == "enum" {
 				v.report(current, "enums may not declare properties")
@@ -280,6 +302,9 @@ func (v *compileValidator) validateMethod(method *ast.StmtClassMethod) {
 	if modifiers["readonly"] {
 		v.report(method, "methods cannot be readonly")
 	}
+	if name, ok := setVisibility(modifiers); ok {
+		v.report(method, fmt.Sprintf("cannot use the %s(set) modifier on a method", name))
+	}
 	if modifiers["abstract"] && !noBody {
 		v.report(method, "abstract methods cannot contain a body")
 	}
@@ -302,23 +327,43 @@ func (v *compileValidator) validateMethod(method *ast.StmtClassMethod) {
 	}
 
 	v.validateParameterNames(method.Params)
+	v.validateTrailingDeclarationComma(method, len(method.Params), len(method.SeparatorTkns))
 	v.validateType(method.ReturnType, typeContextReturn)
 }
 
 func (v *compileValidator) validateFunction(function *ast.StmtFunction) {
 	v.validateParameterNames(function.Params)
+	v.validateTrailingDeclarationComma(function, len(function.Params), len(function.SeparatorTkns))
 	v.validateType(function.ReturnType, typeContextReturn)
 }
 
 func (v *compileValidator) validateClosure(closure *ast.ExprClosure) {
 	v.validateParameterNames(closure.Params)
+	v.validateTrailingDeclarationComma(closure, len(closure.Params), len(closure.SeparatorTkns))
+	if len(closure.Uses) > 0 && len(closure.UseSeparatorTkns) >= len(closure.Uses) {
+		v.requireVersion(closure, PHP80, "trailing commas in closure use lists")
+	}
 	v.validateType(closure.ReturnType, typeContextReturn)
 }
 
 func (v *compileValidator) validateArrowFunction(function *ast.ExprArrowFunction) {
 	v.requireVersion(function, PHP74, "arrow functions")
 	v.validateParameterNames(function.Params)
+	v.validateTrailingDeclarationComma(function, len(function.Params), len(function.SeparatorTkns))
 	v.validateType(function.ReturnType, typeContextReturn)
+}
+
+func (v *compileValidator) validateArgument(argument *ast.Argument) {
+	if argument.Name != nil {
+		v.requireVersion(argument, PHP80, "named arguments")
+	}
+}
+
+func (v *compileValidator) validateNumberLiteral(number *ast.ScalarLnumber) {
+	value := string(number.Value)
+	if len(value) >= 2 && value[0] == '0' && (value[1] == 'o' || value[1] == 'O') {
+		v.requireVersion(number, PHP81, "explicit octal notation")
+	}
 }
 
 func (v *compileValidator) validateArrayItem(item *ast.ExprArrayItem) {
@@ -333,6 +378,18 @@ func (v *compileValidator) validateArrayItem(item *ast.ExprArrayItem) {
 func (v *compileValidator) validateTrailingCallComma(node ast.Vertex, arguments, separators int) {
 	if v.version < PHP73 && arguments > 0 && separators >= arguments {
 		v.report(node, "trailing commas in function calls require PHP 7.3")
+	}
+}
+
+func (v *compileValidator) validateTrailingDeclarationComma(node ast.Vertex, parameters, separators int) {
+	if parameters > 0 && separators >= parameters {
+		v.requireVersion(node, PHP80, "trailing commas in parameter declarations")
+	}
+}
+
+func (v *compileValidator) validateCatch(catch *ast.StmtCatch) {
+	if catch.Var == nil {
+		v.requireVersion(catch, PHP80, "non-capturing catches")
 	}
 }
 
@@ -377,9 +434,14 @@ func (v *compileValidator) validateParameter(parameter *ast.Parameter) {
 	if modifiers["readonly"] && v.version < PHP81 && parameter.Type != nil {
 		v.requireVersion(parameter, PHP81, "readonly promoted properties")
 	}
+	_, asymmetric := setVisibility(modifiers)
 	promoted := modifiers["public"] || modifiers["protected"] ||
-		modifiers["private"] || readonly
+		modifiers["private"] || asymmetric || readonly
+	v.validateAsymmetricUse(parameter, modifiers, parameter.Type != nil)
 
+	if promoted {
+		v.requireVersion(parameter, PHP80, "constructor property promotion")
+	}
 	if readonly {
 		if parameter.Type == nil {
 			v.report(parameter, "readonly properties must have a type")
@@ -411,7 +473,7 @@ func (v *compileValidator) validatePropertyList(property *ast.StmtPropertyList) 
 	if modifiers["readonly"] && v.version < PHP81 && property.Type != nil {
 		v.requireVersion(property, PHP81, "readonly properties")
 	}
-	if modifiers["abstract"] {
+	if modifiers["abstract"] && !property.Hooked {
 		v.report(property, "properties cannot be abstract")
 	}
 	if modifiers["final"] {
@@ -426,6 +488,10 @@ func (v *compileValidator) validatePropertyList(property *ast.StmtPropertyList) 
 		}
 	}
 
+	v.validateAsymmetricUse(property, modifiers, property.Type != nil)
+	if property.Hooked {
+		v.verifyHookedProperty(property, v.enclosingClassKind())
+	}
 	v.validateType(property.Type, typeContextProperty)
 	for _, propertyNode := range property.Props {
 		current, ok := propertyNode.(*ast.StmtProperty)
@@ -455,6 +521,9 @@ func (v *compileValidator) validateClassConstants(constants *ast.StmtClassConstL
 	}
 	if modifiers["readonly"] {
 		v.report(constants, "class constants cannot be readonly")
+	}
+	if name, ok := setVisibility(modifiers); ok {
+		v.report(constants, fmt.Sprintf("cannot use the %s(set) modifier on a class constant", name))
 	}
 	if modifiers["final"] {
 		v.requireVersion(constants, PHP81, "final class constants")
@@ -510,12 +579,85 @@ func (v *compileValidator) validateStaticVariable(variable *ast.StmtStaticVar) {
 	}
 }
 
+func (v *compileValidator) validateTraitAlias(alias *ast.StmtTraitUseAlias) {
+	name := strings.ToLower(nodeName(alias.Modifier))
+	visibility, ok := splitSetVisibility(name)
+	if !ok {
+		return
+	}
+	target := alias.Modifier
+	if target == nil {
+		target = alias
+	}
+	v.report(target, fmt.Sprintf("cannot use the %s(set) modifier on a method", visibility))
+}
+
+func (v *compileValidator) validateAsymmetricUse(node ast.Vertex, modifiers map[string]bool, hasType bool) {
+	setName, hasSet := setVisibility(modifiers)
+	if !hasSet {
+		return
+	}
+	v.requireVersion(node, PHP84, "asymmetric property visibility")
+	if v.version < PHP84 {
+		return
+	}
+	if !hasType {
+		v.report(node, "property with asymmetric visibility must have type")
+	}
+	if modifiers["static"] && v.version < PHP85 {
+		v.report(node, "asymmetric visibility for static properties requires PHP 8.5")
+	}
+	if getName, ok := plainVisibility(modifiers); ok && visibilityStrength(getName) < visibilityStrength(setName) {
+		v.report(node, "property visibility must not be weaker than set visibility")
+	}
+}
+
+func plainVisibility(modifiers map[string]bool) (string, bool) {
+	for _, visibility := range []string{"public", "protected", "private"} {
+		if modifiers[visibility] {
+			return visibility, true
+		}
+	}
+	return "", false
+}
+
+func visibilityStrength(name string) int {
+	switch name {
+	case "private":
+		return 1
+	case "protected":
+		return 2
+	case "public":
+		return 3
+	default:
+		return 0
+	}
+}
+
+func setVisibility(modifiers map[string]bool) (string, bool) {
+	for _, visibility := range []string{"public", "protected", "private"} {
+		if modifiers[visibility+"(set)"] {
+			return visibility, true
+		}
+	}
+	return "", false
+}
+
+func splitSetVisibility(name string) (string, bool) {
+	visibility, ok := strings.CutSuffix(name, "(set)")
+	if !ok || (visibility != "public" && visibility != "protected" && visibility != "private") {
+		return "", false
+	}
+	return visibility, true
+}
+
 func (v *compileValidator) validateModifiers(
 	node ast.Vertex,
 	modifierNodes []ast.Vertex,
 ) map[string]bool {
 	seen := make(map[string]bool)
 	accessCount := 0
+	setCount := 0
 	for _, modifier := range modifierNodes {
 		name := strings.ToLower(nodeName(modifier))
 		if name == "" {
@@ -528,9 +670,12 @@ func (v *compileValidator) validateModifiers(
 		if name == "public" || name == "protected" || name == "private" {
 			accessCount++
 		}
+		if _, ok := splitSetVisibility(name); ok {
+			setCount++
+		}
 	}
 
-	if accessCount > 1 {
+	if accessCount > 1 || setCount > 1 {
 		v.report(node, "multiple access type modifiers are not allowed")
 	}
 	if seen["abstract"] && seen["final"] {
@@ -657,6 +802,194 @@ func (v *compileValidator) enclosingReadonlyClass() bool {
 	return false
 }
 
+func interfacePropertyVisibilityForbidden(modifiers []ast.Vertex) bool {
+	for _, modifier := range modifiers {
+		switch strings.ToLower(nodeName(modifier)) {
+		case "protected", "private":
+			return true
+		}
+	}
+	return false
+}
+
+// verifyHookedProperty applies PHP's virtual-property rules. Set visibility
+// is asymmetric only when it is stricter than get visibility. A missing get
+// visibility is public. Equivalent set visibility, including public(set), is
+// not asymmetric.
+func (v *compileValidator) verifyHookedProperty(property *ast.StmtPropertyList, kind string) {
+	if property == nil || !property.Hooked {
+		return
+	}
+	modifiers := modifierSet(property.Modifiers)
+	asymmetric := asymmetricSetVisibility(modifiers)
+	hasGet, hasSet, getByRef := hookShape(property.Hooks)
+	virtual := kind == "interface" || !hooksUseProperty(property)
+
+	if virtual && propertyHasDefault(property) {
+		v.report(property, "cannot specify default value for virtual hooked property")
+		return
+	}
+	if !virtual && hasSet && getByRef {
+		v.report(property, "get hook of backed property with set hook may not return by reference")
+		return
+	}
+	if virtual && asymmetric && !hasSet {
+		v.report(property, "read-only virtual property must not specify asymmetric visibility")
+		return
+	}
+	if virtual && asymmetric && !hasGet {
+		v.report(property, "write-only virtual property must not specify asymmetric visibility")
+	}
+}
+
+func asymmetricSetVisibility(modifiers map[string]bool) bool {
+	setName, ok := setVisibility(modifiers)
+	if !ok {
+		return false
+	}
+	getName := "public"
+	if plain, ok := plainVisibility(modifiers); ok {
+		getName = plain
+	}
+	return visibilityStrength(setName) < visibilityStrength(getName)
+}
+
+func hookShape(hooks []ast.PropertyHook) (hasGet, hasSet, getByRef bool) {
+	for _, hook := range hooks {
+		switch hook.Name {
+		case "get":
+			hasGet = true
+			getByRef = hook.ByRef
+		case "set":
+			hasSet = true
+		}
+	}
+	return hasGet, hasSet, getByRef
+}
+
+func propertyHasDefault(property *ast.StmtPropertyList) bool {
+	for _, propertyNode := range property.Props {
+		current, ok := propertyNode.(*ast.StmtProperty)
+		if ok && current.Expr != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func hooksUseProperty(property *ast.StmtPropertyList) bool {
+	name := []byte(propertyBareName(property))
+	if len(name) == 0 {
+		return false
+	}
+	for _, hook := range property.Hooks {
+		if hook.Name == "set" && hook.Kind == ast.PropertyHookShort {
+			return true
+		}
+		if hookBodyUsesProperty(hook, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func propertyBareName(property *ast.StmtPropertyList) string {
+	if len(property.Props) == 0 {
+		return ""
+	}
+	name := propertyName(property.Props[0])
+	return strings.TrimPrefix(name, "$")
+}
+
+func hookBodyUsesProperty(hook ast.PropertyHook, name []byte) bool {
+	finder := &propertyUseFinder{name: name}
+	walk := traverser.NewTraverser(finder)
+	if hook.Kind == ast.PropertyHookShort {
+		walk.Traverse(hook.Body)
+	}
+	for _, stmt := range hook.Stmts {
+		walk.Traverse(stmt)
+	}
+	return finder.found
+}
+
+type propertyUseFinder struct {
+	visitor.Null
+	name  []byte
+	found bool
+}
+
+func (f *propertyUseFinder) EnterNode(node ast.Vertex) bool {
+	switch node.(type) {
+	case *ast.ExprClosure, *ast.ExprArrowFunction, *ast.StmtClass, *ast.StmtFunction:
+		return false
+	}
+	switch current := node.(type) {
+	case *ast.ExprPropertyFetch:
+		if propertyFetchUses(current.Var, current.Prop, current.OpenCurlyBracketTkn, f.name) {
+			f.found = true
+		}
+	case *ast.ExprNullsafePropertyFetch:
+		if propertyFetchUses(current.Var, current.Prop, current.OpenCurlyBracketTkn, f.name) {
+			f.found = true
+		}
+	}
+	return true
+}
+
+func propertyFetchUses(object, prop ast.Vertex, computed *token.Token, name []byte) bool {
+	if !isThisVariable(object) {
+		return false
+	}
+	// The parser leaves {$this->{"x"}} as ExprBrackets with a nil curly token.
+	// A non-constant computed name, such as {$this->{$n}}, is not a use.
+	if computed != nil || isBracketProperty(prop) {
+		literal, ok := constantPropertyName(prop)
+		return ok && bytes.Equal(literal, name)
+	}
+	return bytes.Equal([]byte(nodeName(prop)), name)
+}
+
+func isBracketProperty(node ast.Vertex) bool {
+	_, ok := node.(*ast.ExprBrackets)
+	return ok
+}
+
+func constantPropertyName(node ast.Vertex) ([]byte, bool) {
+	for {
+		brackets, ok := node.(*ast.ExprBrackets)
+		if !ok {
+			break
+		}
+		node = brackets.Expr
+	}
+	literal, ok := node.(*ast.ScalarString)
+	if !ok || len(literal.Value) < 2 {
+		return nil, false
+	}
+	quote := literal.Value[0]
+	if (quote != '"' && quote != '\'') || literal.Value[len(literal.Value)-1] != quote {
+		return nil, false
+	}
+	return literal.Value[1 : len(literal.Value)-1], true
+}
+
+func isThisVariable(node ast.Vertex) bool {
+	for {
+		brackets, ok := node.(*ast.ExprBrackets)
+		if !ok {
+			break
+		}
+		node = brackets.Expr
+	}
+	variable, ok := node.(*ast.ExprVariable)
+	if !ok {
+		return false
+	}
+	value := strings.TrimPrefix(nodeName(variable.Name), "$")
+	return value == "this"
+}
+
 func modifierSet(modifiers []ast.Vertex) map[string]bool {
 	result := make(map[string]bool)
 	for _, modifier := range modifiers {
@@ -692,10 +1025,19 @@ func nodeName(node ast.Vertex) string {
 	case *ast.NamePart:
 		return string(current.Value)
 	case *ast.Name:
+		if len(current.Parts) == 0 {
+			return string(current.Value)
+		}
 		return joinNameParts(current.Parts)
 	case *ast.NameFullyQualified:
+		if len(current.Parts) == 0 {
+			return string(current.Value)
+		}
 		return `\` + joinNameParts(current.Parts)
 	case *ast.NameRelative:
+		if len(current.Parts) == 0 {
+			return string(current.Value)
+		}
 		return `namespace\` + joinNameParts(current.Parts)
 	default:
 		return ""

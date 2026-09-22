@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/shyim/go-phplint/internal/php8"
+	php "github.com/shyim/go-phplint/internal/php"
 	"github.com/shyim/go-phplint/internal/tester"
 	"github.com/shyim/go-phplint/internal/ast"
 	"github.com/shyim/go-phplint/internal/conf"
@@ -14,7 +14,7 @@ import (
 	"gotest.tools/assert"
 )
 
-func Example_php8() {
+func Example_php() {
 	src := `<?php
 
 namespace Foo;
@@ -32,16 +32,17 @@ abstract class Bar extends Baz
 	// parsePHP8
 
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 8,
 			Minor: 0,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
 
-	rootNode := php8parser.GetRootNode()
+	rootNode := phpparser.GetRootNode()
 
 	// change namespace
 
@@ -68,21 +69,22 @@ abstract class Bar extends Baz
 	// }
 }
 
-func parsePHP8(src string) ast.Vertex {
+func parseUnified(src string) ast.Vertex {
 	config := conf.Config{
+		Fidelity: true,
 		Version: &version.Version{
 			Major: 8,
 			Minor: 1,
 		},
 	}
-	lexer := php8.NewLexer([]byte(src), config)
-	php8parser := php8.NewParser(lexer, config)
-	php8parser.Parse()
+	lexer := php.NewLexer([]byte(src), config)
+	phpparser := php.NewParser(lexer, config)
+	phpparser.Parse()
 
-	return php8parser.GetRootNode()
+	return phpparser.GetRootNode()
 }
 
-func printPHP8(n ast.Vertex) string {
+func printUnified(n ast.Vertex) string {
 	o := bytes.NewBufferString("")
 
 	p := printer.NewPrinter(o)
@@ -93,46 +95,46 @@ func printPHP8(n ast.Vertex) string {
 
 // test node
 
-func TestParseAndPrintRootPHP8(t *testing.T) {
+func TestParseAndPrintRoot(t *testing.T) {
 
 	src := ` <div>Hello</div> 
 	<?php
 	$a;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintIdentifierPHP8(t *testing.T) {
+func TestParseAndPrintIdentifier(t *testing.T) {
 	src := `<? ;
 	/* Foo */
 	Foo ( ) ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintParameterTMPPHP8(t *testing.T) {
+func TestParseAndPrintParameterTMP(t *testing.T) {
 
 	src := `<?php
 	function foo ( foo & ... $foo = null ) {}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintParameterPHP8(t *testing.T) {
+func TestParseAndPrintParameter(t *testing.T) {
 
 	src := `<?php
 	function & foo (
@@ -142,34 +144,34 @@ func TestParseAndPrintParameterPHP8(t *testing.T) {
 		;
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintNullablePHP8(t *testing.T) {
+func TestParseAndPrintNullable(t *testing.T) {
 
 	src := `<?php
 	function & foo ( ? int $a ) {
 		/* do nothing */
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintArgumentPHP8(t *testing.T) {
+func TestParseAndPrintArgument(t *testing.T) {
 	src := `<?php
 	foo ( $a , $b
 		, ... $c ,
 	) ; `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
@@ -178,14 +180,14 @@ func TestParseAndPrintArgumentPHP8(t *testing.T) {
 
 // test name
 
-func TestParseAndPrintNamesPHP8(t *testing.T) {
+func TestParseAndPrintNames(t *testing.T) {
 	src := `<?php
 	foo ( ) ;
 	\foo ( ) ;
 	namespace\foo ( ) ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
@@ -194,7 +196,7 @@ func TestParseAndPrintNamesPHP8(t *testing.T) {
 
 // test scalar
 
-func TestParseAndPrintMagicConstantPHP8(t *testing.T) {
+func TestParseAndPrintMagicConstant(t *testing.T) {
 	src := `<?php
 	__CLASS__     ;
 	__DIR__       ;
@@ -206,14 +208,14 @@ func TestParseAndPrintMagicConstantPHP8(t *testing.T) {
 	__TRAIT__     ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintNumberPHP8(t *testing.T) {
+func TestParseAndPrintNumber(t *testing.T) {
 	src := `<?php
 	// LNumber
 	1234567890123456789 ;
@@ -237,27 +239,27 @@ func TestParseAndPrintNumberPHP8(t *testing.T) {
 	0x8111111111111111 ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintStringPHP8(t *testing.T) {
+func TestParseAndPrintString(t *testing.T) {
 	src := `<?php
 	'Hello' ;
 	"Hello {$world } " ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintHeredocPHP8(t *testing.T) {
+func TestParseAndPrintHeredoc(t *testing.T) {
 	src := `<?php
 	foo(<<<EAP
 test
@@ -278,7 +280,7 @@ test
 EAP;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
@@ -287,7 +289,7 @@ EAP;
 
 // test assign
 
-func TestParseAndPrintAssignPHP8(t *testing.T) {
+func TestParseAndPrintAssign(t *testing.T) {
 	src := `<?php
 	$a = $b ;
 	$a = & $b ;
@@ -306,7 +308,7 @@ func TestParseAndPrintAssignPHP8(t *testing.T) {
 	$a >>= $b ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
@@ -315,7 +317,7 @@ func TestParseAndPrintAssignPHP8(t *testing.T) {
 
 // test binary
 
-func TestParseAndPrintBinaryPHP8(t *testing.T) {
+func TestParseAndPrintBinary(t *testing.T) {
 	src := `<?php
 	$a & $b ;
 	$a | $b ;
@@ -347,7 +349,7 @@ func TestParseAndPrintBinaryPHP8(t *testing.T) {
 	$a <=> $b ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
@@ -356,7 +358,7 @@ func TestParseAndPrintBinaryPHP8(t *testing.T) {
 
 // test cast
 
-func TestParseAndPrintCastPHP8(t *testing.T) {
+func TestParseAndPrintCast(t *testing.T) {
 	src := `<?php
 	(  array     ) $a ;
 	(  bool      ) $a ;
@@ -372,7 +374,7 @@ func TestParseAndPrintCastPHP8(t *testing.T) {
 	// (  unset     ) $a ; unset cast was removed in PHP 8
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
@@ -381,7 +383,7 @@ func TestParseAndPrintCastPHP8(t *testing.T) {
 
 // test expr
 
-func TestParseAndPrintArrayDimFetchPHP8(t *testing.T) {
+func TestParseAndPrintArrayDimFetch(t *testing.T) {
 	src := `<?php
 	FOO [ ] ;
 	FOO [ 1 ] ;
@@ -395,14 +397,14 @@ func TestParseAndPrintArrayDimFetchPHP8(t *testing.T) {
 	"${ a [ 1 ] }test" ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintArrayItemPHP8(t *testing.T) {
+func TestParseAndPrintArrayItem(t *testing.T) {
 	src := `<?php
 	$foo = [
 		$world ,
@@ -412,162 +414,162 @@ func TestParseAndPrintArrayItemPHP8(t *testing.T) {
 	] ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintArrayPHP8(t *testing.T) {
+func TestParseAndPrintArray(t *testing.T) {
 	src := `<?php
 	array ( /* empty array */ ) ;
 	array ( 0 , 2 => 2 ) ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintBitwiseNotPHP8(t *testing.T) {
+func TestParseAndPrintBitwiseNot(t *testing.T) {
 	src := `<?php
 	~ $var ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintBooleanNotPHP8(t *testing.T) {
+func TestParseAndPrintBooleanNot(t *testing.T) {
 	src := `<?php
 	! $var ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClassConstFetchPHP8(t *testing.T) {
+func TestParseAndPrintClassConstFetch(t *testing.T) {
 	src := `<?php
 	$var :: CONST ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClonePHP8(t *testing.T) {
+func TestParseAndPrintClone(t *testing.T) {
 	src := `<?php
 	clone $var ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClosureUsePHP8(t *testing.T) {
+func TestParseAndPrintClosureUse(t *testing.T) {
 	src := `<?php
 	$a = function ( ) use ( $a , & $b ) {
 		// do nothing
 	} ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClosurePHP8(t *testing.T) {
+func TestParseAndPrintClosure(t *testing.T) {
 	src := `<?php
 	$a  = static function & ( ) : void {
 		// do nothing
 	} ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintArrowFunctionPHP8(t *testing.T) {
+func TestParseAndPrintArrowFunction(t *testing.T) {
 	src := `<?php
 	$a = static fn & ( $b ) : void => $c ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintConstFetchPHP8(t *testing.T) {
+func TestParseAndPrintConstFetch(t *testing.T) {
 	src := `<?php
 	null ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintEmptyPHP8(t *testing.T) {
+func TestParseAndPrintEmpty(t *testing.T) {
 	src := `<?php
 	empty ( $a ) ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintErrorSuppressPHP8(t *testing.T) {
+func TestParseAndPrintErrorSuppress(t *testing.T) {
 	src := `<?php
 	@ foo ( ) ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintEvalPHP8(t *testing.T) {
+func TestParseAndPrintEval(t *testing.T) {
 	src := `<?php
 	eval ( " " ) ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintExitPHP8(t *testing.T) {
+func TestParseAndPrintExit(t *testing.T) {
 	src := `<?php
 	exit ;
 	exit ( ) ;
@@ -579,84 +581,84 @@ func TestParseAndPrintExitPHP8(t *testing.T) {
 	die ( 1 );
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintFunctionCallPHP8(t *testing.T) {
+func TestParseAndPrintFunctionCall(t *testing.T) {
 	src := `<?php
 	foo ( ) ;
 	$var ( $a , ... $b , $c ) ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintIncludePHP8(t *testing.T) {
+func TestParseAndPrintInclude(t *testing.T) {
 
 	src := `<?php
 	include 'foo' ;
 	include_once 'bar' ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintInstanceOfPHP8(t *testing.T) {
+func TestParseAndPrintInstanceOf(t *testing.T) {
 	src := `<?php
 	$a instanceof Foo ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintIssetPHP8(t *testing.T) {
+func TestParseAndPrintIsset(t *testing.T) {
 	src := `<?php
 	isset ( $a , $b [ 2 ] , ) ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintListPHP8(t *testing.T) {
+func TestParseAndPrintList(t *testing.T) {
 	src := `<?php
 	list( , $var , ) = $b ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintMethodCallPHP8(t *testing.T) {
+func TestParseAndPrintMethodCall(t *testing.T) {
 	src := `<?php
 	$a -> bar ( $arg , ) ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintNewPHP8(t *testing.T) {
+func TestParseAndPrintNew(t *testing.T) {
 	src := `<?php
 
 	new Foo ;
@@ -667,51 +669,51 @@ func TestParseAndPrintNewPHP8(t *testing.T) {
 
 	} ; `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintIncDecPHP8(t *testing.T) {
+func TestParseAndPrintIncDec(t *testing.T) {
 	src := `<?php
 	++ $a ;
 	-- $a ;
 	$a ++ ;
 	$a -- ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintPrintPHP8(t *testing.T) {
+func TestParseAndPrintPrint(t *testing.T) {
 	src := `<?php
 	print $a ;
 	print ( $a ) ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintPropertyFetchPHP8(t *testing.T) {
+func TestParseAndPrintPropertyFetch(t *testing.T) {
 	src := `<?php
 	$a -> b ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintReferencePHP8(t *testing.T) {
+func TestParseAndPrintReference(t *testing.T) {
 	src := `<?php
 	$a = & $b ;
 	$a = [ & $b ] ;
@@ -725,37 +727,37 @@ func TestParseAndPrintReferencePHP8(t *testing.T) {
 		// do nothing
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintRequirePHP8(t *testing.T) {
+func TestParseAndPrintRequire(t *testing.T) {
 
 	src := `<?php
 	require __DIR__ . '/folder' ;
 	require_once $a ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintShellExecPHP8(t *testing.T) {
+func TestParseAndPrintShellExec(t *testing.T) {
 	src := "<?php ` {$v} cmd ` ; "
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintShortArrayPHP8(t *testing.T) {
+func TestParseAndPrintShortArray(t *testing.T) {
 	src := `<?php
 	$a = [ ] ;
 	$a = [ 0 ] ;
@@ -765,14 +767,14 @@ func TestParseAndPrintShortArrayPHP8(t *testing.T) {
 	] ;
 	$a = [0, 1, 2] ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintShortListPHP8(t *testing.T) {
+func TestParseAndPrintShortList(t *testing.T) {
 	src := `<?php
 	[ 
 		/* skip */,
@@ -780,77 +782,77 @@ func TestParseAndPrintShortListPHP8(t *testing.T) {
 		/* skip */,
 	] = $a ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintStaticCallPHP8(t *testing.T) {
+func TestParseAndPrintStaticCall(t *testing.T) {
 	src := `<?php
 	Foo :: bar ( $a , $b ) ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintStaticPropertyFetchPHP8(t *testing.T) {
+func TestParseAndPrintStaticPropertyFetch(t *testing.T) {
 	src := `<?php
 	Foo :: $bar ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintTernaryPHP8(t *testing.T) {
+func TestParseAndPrintTernary(t *testing.T) {
 	src := `<?php
 	$a ? $b : $c ;
 	$a ? : $c ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintUnaryPHP8(t *testing.T) {
+func TestParseAndPrintUnary(t *testing.T) {
 	src := `<?php
 	- $a ;
 	+ $a ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintVariablePHP8(t *testing.T) {
+func TestParseAndPrintVariable(t *testing.T) {
 	src := `<?php
 	$ /* variable variable comment */ $var ; `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintYieldPHP8(t *testing.T) {
+func TestParseAndPrintYield(t *testing.T) {
 	src := `<?php
 	yield $a ;
 	yield $k => $v ;
 	yield from $a ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
@@ -859,7 +861,7 @@ func TestParseAndPrintYieldPHP8(t *testing.T) {
 
 // test stmt
 
-func TestParseAndPrintAltIfPHP8(t *testing.T) {
+func TestParseAndPrintAltIf(t *testing.T) {
 	src := `<?php
 	if ( 1 ) :
 		// do nothing
@@ -870,14 +872,14 @@ func TestParseAndPrintAltIfPHP8(t *testing.T) {
 		;
 	endif ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintAltForPHP8(t *testing.T) {
+func TestParseAndPrintAltFor(t *testing.T) {
 	src := `<?php
 	for ( $a ; $b ; $c ) :
 	endfor ;
@@ -885,27 +887,27 @@ func TestParseAndPrintAltForPHP8(t *testing.T) {
 	for ( ; ; ) :
 	endfor ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintAltForeachPHP8(t *testing.T) {
+func TestParseAndPrintAltForeach(t *testing.T) {
 	src := `<?php
 	foreach ( $a as $k => & $v ) :
 		echo $v ;
 	endforeach ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintAltSwitchPHP8(t *testing.T) {
+func TestParseAndPrintAltSwitch(t *testing.T) {
 	src := `<?php
 
 	switch ( $a ) : 
@@ -928,28 +930,28 @@ func TestParseAndPrintAltSwitchPHP8(t *testing.T) {
 	endswitch ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintAltWhilePHP8(t *testing.T) {
+func TestParseAndPrintAltWhile(t *testing.T) {
 	src := `<?php
 
 	while ( $a ) :
 		// do nothing
 	endwhile ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintBreakPHP8(t *testing.T) {
+func TestParseAndPrintBreak(t *testing.T) {
 	src := `<?php
 
 	break ;
@@ -957,14 +959,14 @@ func TestParseAndPrintBreakPHP8(t *testing.T) {
 	break ( 2 ) ;
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClassMethodPHP8(t *testing.T) {
+func TestParseAndPrintClassMethod(t *testing.T) {
 	t.Skip("printer is not part of the embedded linter surface")
 
 	src := `<?php
@@ -981,14 +983,14 @@ func TestParseAndPrintClassMethodPHP8(t *testing.T) {
 		}
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClassPHP8(t *testing.T) {
+func TestParseAndPrintClass(t *testing.T) {
 	src := `<?php
 	abstract final class Foo extends Bar implements Baz , Quuz {
 		
@@ -998,39 +1000,39 @@ func TestParseAndPrintClassPHP8(t *testing.T) {
 
 	} ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClassConstListPHP8(t *testing.T) {
+func TestParseAndPrintClassConstList(t *testing.T) {
 	src := `<?php
 	class Foo {
 		public const FOO = 'f' , BAR = 'b' ;
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintConstListPHP8(t *testing.T) {
+func TestParseAndPrintConstList(t *testing.T) {
 	src := `<?php
 	const FOO = 1 , BAR = 2 ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintContinuePHP8(t *testing.T) {
+func TestParseAndPrintContinue(t *testing.T) {
 	src := `<?php
 
 	continue ;
@@ -1038,14 +1040,14 @@ func TestParseAndPrintContinuePHP8(t *testing.T) {
 	continue ( 2 ) ;
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintDeclarePHP8(t *testing.T) {
+func TestParseAndPrintDeclare(t *testing.T) {
 	src := `<?php
 	declare ( FOO = 'bar' , BAR = "foo" ) ;
 	declare ( FOO = 'bar' ) $a ;
@@ -1057,28 +1059,28 @@ func TestParseAndPrintDeclarePHP8(t *testing.T) {
 	enddeclare ;
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintDoWhilePHP8(t *testing.T) {
+func TestParseAndPrintDoWhile(t *testing.T) {
 	src := `<?php
 	do {
 		;
 	} while ( $a ) ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintEchoPHP8(t *testing.T) {
+func TestParseAndPrintEcho(t *testing.T) {
 	src := `<?php
 	echo '' ;
 	echo $a , ' ' , PHP_EOL;
@@ -1090,25 +1092,25 @@ func TestParseAndPrintEchoPHP8(t *testing.T) {
 
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintIfExpressionPHP8(t *testing.T) {
+func TestParseAndPrintIfExpression(t *testing.T) {
 	src := `<?php
 	$a ; `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintForPHP8(t *testing.T) {
+func TestParseAndPrintFor(t *testing.T) {
 	src := `<?php
 	for ( $i = 0 ; $i < 3 ; $i ++ ) 
 		echo $i . PHP_EOL;
@@ -1117,90 +1119,90 @@ func TestParseAndPrintForPHP8(t *testing.T) {
 
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintForeachPHP8(t *testing.T) {
+func TestParseAndPrintForeach(t *testing.T) {
 	src := `<?php
 	foreach ( $a as $k => & $v ) {
 		;
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintFunctionPHP8(t *testing.T) {
+func TestParseAndPrintFunction(t *testing.T) {
 
 	src := `<?php
 	function & foo ( ) : void {
 		;
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintGlobalPHP8(t *testing.T) {
+func TestParseAndPrintGlobal(t *testing.T) {
 	src := `<?php
 	global $a , $b ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintGotoPHP8(t *testing.T) {
+func TestParseAndPrintGoto(t *testing.T) {
 	src := `<?php
 	goto Foo ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintGroupUsePHP8(t *testing.T) {
+func TestParseAndPrintGroupUse(t *testing.T) {
 	src := `<?php
 	use function Foo\{ Bar as Baz , Quuz , } ;
 	use Foo\{ function Bar as Baz , const Quuz } ;
 	use \Foo\{ function Bar as Baz , const Quuz , } ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintHaltCompilerPHP8(t *testing.T) {
+func TestParseAndPrintHaltCompiler(t *testing.T) {
 	src := `<?php
 	__halt_compiler ( ) ;
 	this text is ignored by parser
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintIfElseIfElsePHP8(t *testing.T) {
+func TestParseAndPrintIfElseIfElse(t *testing.T) {
 	src := `<?php
 	if ( 1 ) ;
 	elseif ( 2 ) {
@@ -1209,61 +1211,61 @@ func TestParseAndPrintIfElseIfElsePHP8(t *testing.T) {
 	else if ( 3 ) $a;
 	else { }`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintInlineHtmlPHP8(t *testing.T) {
+func TestParseAndPrintInlineHtml(t *testing.T) {
 	src := `<?php
 	$a;?>test<? `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintShebangPHP8(t *testing.T) {
+func TestParseAndPrintShebang(t *testing.T) {
 	src := `#!/usr/bin/env php
 	<?php
 	$a;?>test<? `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintInterfacePHP8(t *testing.T) {
+func TestParseAndPrintInterface(t *testing.T) {
 	src := `<?php
 	interface Foo extends Bar , Baz {
 
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintGotoLabelPHP8(t *testing.T) {
+func TestParseAndPrintGotoLabel(t *testing.T) {
 	src := `<?php
 	Foo : $b ; `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintNamespacePHP8(t *testing.T) {
+func TestParseAndPrintNamespace(t *testing.T) {
 	src := `<?php
 	namespace Foo\Bar ; 
 	namespace Baz {
@@ -1274,24 +1276,24 @@ func TestParseAndPrintNamespacePHP8(t *testing.T) {
 	}
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintNopPHP8(t *testing.T) {
+func TestParseAndPrintNop(t *testing.T) {
 	src := `<?php `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintPropertyListPHP8(t *testing.T) {
+func TestParseAndPrintPropertyList(t *testing.T) {
 	src := `<?php
 	class Foo {
 		var $a = '' , $b = null ;
@@ -1300,14 +1302,14 @@ func TestParseAndPrintPropertyListPHP8(t *testing.T) {
 		
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintReturnPHP8(t *testing.T) {
+func TestParseAndPrintReturn(t *testing.T) {
 	src := `<?php
 	class Foo {
 		function bar ( )
@@ -1327,40 +1329,40 @@ func TestParseAndPrintReturnPHP8(t *testing.T) {
 	}
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintStaticVarPHP8(t *testing.T) {
+func TestParseAndPrintStaticVar(t *testing.T) {
 	src := `<?php
 	static $a , $b = foo ( ) ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintStmtListPHP8(t *testing.T) {
+func TestParseAndPrintStmtList(t *testing.T) {
 	src := `<?php
 	{
 		;
 	}
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintSwitchPHP8(t *testing.T) {
+func TestParseAndPrintSwitch(t *testing.T) {
 	src := `<?php
 
 	switch ( $a ) {
@@ -1372,25 +1374,25 @@ func TestParseAndPrintSwitchPHP8(t *testing.T) {
 		default ; ;
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintThrowPHP8(t *testing.T) {
+func TestParseAndPrintThrow(t *testing.T) {
 	src := `<?php
 	throw new \Exception ( "msg" ) ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintTraitUsePHP8(t *testing.T) {
+func TestParseAndPrintTraitUse(t *testing.T) {
 	src := `<?php
 	class foo {
 		use \foo , bar ;
@@ -1404,27 +1406,27 @@ func TestParseAndPrintTraitUsePHP8(t *testing.T) {
 		}
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintTraitPHP8(t *testing.T) {
+func TestParseAndPrintTrait(t *testing.T) {
 	src := `<?php
 	trait foo {
 		function bar ( ) { }
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintTryCatchFinallyPHP8(t *testing.T) {
+func TestParseAndPrintTryCatchFinally(t *testing.T) {
 	src := `<?php
 
 	try {
@@ -1435,26 +1437,26 @@ func TestParseAndPrintTryCatchFinallyPHP8(t *testing.T) {
 
 	}`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintUnsetPHP8(t *testing.T) {
+func TestParseAndPrintUnset(t *testing.T) {
 	src := `<?php
 	unset ( $a ) ;
 	unset ( $a , $b , ) ;`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintUseListPHP8(t *testing.T) {
+func TestParseAndPrintUseList(t *testing.T) {
 	src := `<?php
 	use Foo ;
 	use \Foo as Bar ;
@@ -1462,21 +1464,21 @@ func TestParseAndPrintUseListPHP8(t *testing.T) {
 	use const Foo as Bar, baz ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintWhilePHP8(t *testing.T) {
+func TestParseAndPrintWhile(t *testing.T) {
 	src := `<?php
 	while ( $a ) echo '' ;
 	while ( $a ) { }
 	while ( $a ) ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
@@ -1485,7 +1487,7 @@ func TestParseAndPrintWhilePHP8(t *testing.T) {
 
 // other
 
-func TestParseAndPrintParenthesesPHP8(t *testing.T) {
+func TestParseAndPrintParentheses(t *testing.T) {
 	src := `<?php
 	$b = (($a));
 	$b = ( ($a) );
@@ -1500,14 +1502,14 @@ func TestParseAndPrintParenthesesPHP8(t *testing.T) {
 	$a -> { $b . 'b' } ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintComplexString1PHP8(t *testing.T) {
+func TestParseAndPrintComplexString1(t *testing.T) {
 	src := `<?php
 	// "test $foo" ;
 	"test $foo[1]" ;
@@ -1519,14 +1521,14 @@ func TestParseAndPrintComplexString1PHP8(t *testing.T) {
 	"test $foo->bar" ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintComplexString2PHP8(t *testing.T) {
+func TestParseAndPrintComplexString2(t *testing.T) {
 	src := `<?php
 	"test ${ foo }" ;
 	"test ${ foo . 'bar' }" ;
@@ -1540,14 +1542,14 @@ func TestParseAndPrintComplexString2PHP8(t *testing.T) {
 	"test ${ $a . '' }" ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintComplexString3PHP8(t *testing.T) {
+func TestParseAndPrintComplexString3(t *testing.T) {
 	src := `<?php
 	"test ${foo}" ;
 	"test ${foo[0]}";
@@ -1564,14 +1566,14 @@ func TestParseAndPrintComplexString3PHP8(t *testing.T) {
 	"test ${$a . '' }" ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintComplexString4PHP8(t *testing.T) {
+func TestParseAndPrintComplexString4(t *testing.T) {
 	src := `<?php
 	"test {$foo }" ;
 	"test {$foo [ ] }" ;
@@ -1580,14 +1582,14 @@ func TestParseAndPrintComplexString4PHP8(t *testing.T) {
 	"test {$foo -> bar ( ) }" ;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintNullsafePHP8(t *testing.T) {
+func TestParseAndPrintNullsafe(t *testing.T) {
 	src := `<?php
 $a?->method();
 $a?->prop;
@@ -1595,7 +1597,7 @@ $a?->prop;
 (f())?->prop_for_expr;
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
@@ -1621,14 +1623,14 @@ new class (name: $a) {};
 new class (name: $a, $b, ...$c) {};
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintMatchPHP8(t *testing.T) {
+func TestParseAndPrintMatch(t *testing.T) {
 	src := `<?php
 echo match($a) {};
 
@@ -1691,12 +1693,12 @@ echo match($a) {
 };
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	assert.Equal(t, src, actual)
 }
 
-func TestParseAndPrintUnionTypesPHP8(t *testing.T) {
+func TestParseAndPrintUnionTypes(t *testing.T) {
 	src := `<?php
 function f(int|string $a) {}
 function f(int|string|float $a) {}
@@ -1779,12 +1781,12 @@ class Foo {
 }
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	assert.Equal(t, src, actual)
 }
 
-func TestParseAndPrintTryCatchWithoutVariablePHP8(t *testing.T) {
+func TestParseAndPrintTryCatchWithoutVariable(t *testing.T) {
 	src := `<?php
 try {} catch (Exception) {}
 try {} catch (Exception|Exception2) {}
@@ -1804,12 +1806,12 @@ try {} catch (Exception|Exception2 $a) {} catch (Exception3|Exception4 $a) {}
 try {} catch (Exception|Exception2|Exception3 $a) {} catch (Exception4 $a) {}
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	assert.Equal(t, src, actual)
 }
 
-func TestParseAndPrintParametersWithTrailingCommaPHP8(t *testing.T) {
+func TestParseAndPrintParametersWithTrailingComma(t *testing.T) {
 	src := `<?php
 function f(
   $a,
@@ -1895,12 +1897,12 @@ function f() {
 }
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	assert.Equal(t, src, actual)
 }
 
-func TestParseAndPrintThrowExprAndStmtPHP8(t *testing.T) {
+func TestParseAndPrintThrowExprAndStmt(t *testing.T) {
 	src := `<?php
 $a ??= throw new InvalidArgumentException();
 $a && throw new InvalidArgumentException();
@@ -1920,12 +1922,12 @@ throw $exception = new Exception();
 throw new InvalidArgumentException();
 	`
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	assert.Equal(t, src, actual)
 }
 
-func TestParseAndPrintPropertyInConstructorPHP8(t *testing.T) {
+func TestParseAndPrintPropertyInConstructor(t *testing.T) {
 	src := `<?php
 class Point {
     public function __construct(
@@ -1979,14 +1981,14 @@ class Point5 {
 }
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClass2PHP8(t *testing.T) {
+func TestParseAndPrintClass2(t *testing.T) {
 	src := `<?php
 class Foo {}
 abstract class Foo {}
@@ -2008,14 +2010,14 @@ abstract final class Foo extends Boo implements Goo, Doo  {
 }
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintTrait2PHP8(t *testing.T) {
+func TestParseAndPrintTrait2(t *testing.T) {
 	src := `<?php
 trait Foo {}
 
@@ -2024,14 +2026,14 @@ trait Foo {
 }
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintInterface2PHP8(t *testing.T) {
+func TestParseAndPrintInterface2(t *testing.T) {
 	src := `<?php
 interface Foo {}
 interface Foo extends Boo {}
@@ -2042,14 +2044,14 @@ interface Foo {
 }
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClassWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintClassWithAttributes(t *testing.T) {
 	src := `<?php
 #[SimpleAttribute]
 class Foo {}
@@ -2083,14 +2085,14 @@ class Foo {}
 final class Foo extends Boo implements Goo, Doo {}
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintTraitWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintTraitWithAttributes(t *testing.T) {
 	src := `<?php
 #[SimpleAttribute]
 trait Foo {}
@@ -2118,14 +2120,14 @@ trait Foo {}
 trait Foo {}
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintInterfaceWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintInterfaceWithAttributes(t *testing.T) {
 	src := `<?php
 #[SimpleAttribute]
 interface Foo {}
@@ -2153,14 +2155,14 @@ interface Foo {}
 interface Foo {}
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintParamsWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintParamsWithAttributes(t *testing.T) {
 	src := `<?php
 class Foo {
 	public function __construct(#[SimpleAttribute] public string|int $a) {}
@@ -2218,14 +2220,14 @@ function f(
 ) {}
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintFunctionWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintFunctionWithAttributes(t *testing.T) {
 	src := `<?php
 #[SimpleAttribute]
 function &f(): void {}
@@ -2253,14 +2255,14 @@ function f() {}
 function &f(): \Foo|string {}
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClosureWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintClosureWithAttributes(t *testing.T) {
 	src := `<?php
 function f() {
 	$_ =
@@ -2297,14 +2299,14 @@ function f() {
 }
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintArrowFunctionWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintArrowFunctionWithAttributes(t *testing.T) {
 	src := `<?php
 function f() {
 	$_ =
@@ -2341,14 +2343,14 @@ function f() {
 }
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintAnonClassWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintAnonClassWithAttributes(t *testing.T) {
 	src := `<?php
 $_ = new
 	#[SimpleAttribute]
@@ -2391,14 +2393,14 @@ $_ = new
 	class extends Boo implements Goo, Doo {};
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClassPropertyWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintClassPropertyWithAttributes(t *testing.T) {
 	src := `<?php
 class Foo {
 	#[SimpleAttribute]
@@ -2431,14 +2433,14 @@ class Foo {
 }
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClassConstWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintClassConstWithAttributes(t *testing.T) {
 	src := `<?php
 class Foo {
 	#[SimpleAttribute]
@@ -2471,14 +2473,14 @@ class Foo {
 }
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
 
-func TestParseAndPrintClassMethodWithAttributesPHP8(t *testing.T) {
+func TestParseAndPrintClassMethodWithAttributes(t *testing.T) {
 	src := `<?php
 class Foo {
 	#[SimpleAttribute]
@@ -2508,13 +2510,13 @@ class Foo {
 }
 `
 
-	actual := printPHP8(parsePHP8(src))
+	actual := printUnified(parseUnified(src))
 
 	if src != actual {
 		t.Errorf("\nexpected: %s\ngot: %s\n", src, actual)
 	}
 }
-func TestParseAndPrintNamespaceWithKeywordsPHP8(t *testing.T) {
+func TestParseAndPrintNamespaceWithKeywords(t *testing.T) {
 	tester.NewParserPrintTestSuite(t).UsePHP8().Run(`<?php
 namespace fn;
 namespace Foo\fn;
@@ -2523,7 +2525,7 @@ namespace Foo\abstract\match;
 `)
 }
 
-func TestParseAndPrintUsePHP8(t *testing.T) {
+func TestParseAndPrintUse(t *testing.T) {
 	tester.NewParserPrintTestSuite(t).UsePHP8().Run(`<?php
 use Foo, \Foo, Boo as Foo, \Boo as Foo;
 use function Foo, \Foo, Boo as Foo, \Boo as Foo;
@@ -2580,7 +2582,7 @@ use const Foo\{
 `)
 }
 
-func TestParseAndPrintClosureUseWithTrailingCommaPHP8(t *testing.T) {
+func TestParseAndPrintClosureUseWithTrailingComma(t *testing.T) {
 	tester.NewParserPrintTestSuite(t).UsePHP8().Run(`<?php
 $_ = function () use (
   $a
@@ -2603,14 +2605,14 @@ $_ = function () use (
 `)
 }
 
-func TestParseAndPrintConstFetchClassConstantWithObjectPHP8(t *testing.T) {
+func TestParseAndPrintConstFetchClassConstantWithObject(t *testing.T) {
 	tester.NewParserPrintTestSuite(t).UsePHP8().Run(`<?php
 $a::B;
 $a::class;
 `)
 }
 
-func TestParseAndPrintEncapsedStringDerefencablePHP8(t *testing.T) {
+func TestParseAndPrintEncapsedStringDerefencable(t *testing.T) {
 	tester.NewParserPrintTestSuite(t).UsePHP8().Run(`<?php
 "string"->length();
 "foo$bar"[0];
@@ -2618,7 +2620,7 @@ func TestParseAndPrintEncapsedStringDerefencablePHP8(t *testing.T) {
 `)
 }
 
-func TestParseAndPrintConstantDerefencablePHP8(t *testing.T) {
+func TestParseAndPrintConstantDerefencable(t *testing.T) {
 	tester.NewParserPrintTestSuite(t).UsePHP8().Run(`<?php
 A->length;
 A->length();
@@ -2637,7 +2639,7 @@ A::B::c();
 `)
 }
 
-func TestParseAndPrintArbitraryExpressionsInNewAndInstanceOfPHP8(t *testing.T) {
+func TestParseAndPrintArbitraryExpressionsInNewAndInstanceOf(t *testing.T) {
 	tester.NewParserPrintTestSuite(t).UsePHP8().Run(`<?php
 new ('Foo' . $bar);
 new ('Foo' . $bar)($arg);
@@ -2645,7 +2647,7 @@ $obj instanceof ('Foo' . $bar);
 `)
 }
 
-func TestParseAndPrintMagicConstantDerefencablePHP8(t *testing.T) {
+func TestParseAndPrintMagicConstantDerefencable(t *testing.T) {
 	tester.NewParserPrintTestSuite(t).UsePHP8().Run(`<?php
 __FUNCTION__[0];
 __FUNCTION__->length;

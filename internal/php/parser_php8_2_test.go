@@ -1,4 +1,4 @@
-package php8_test
+package php_test
 
 import (
 	"testing"
@@ -150,7 +150,6 @@ class Bar {
 					},
 				},
 			},
-			Stmts: []ast.Vertex{},
 		},
 		&ast.StmtFunction{
 			Name: &ast.Identifier{
@@ -179,7 +178,6 @@ class Bar {
 					},
 				},
 			},
-			Stmts: []ast.Vertex{},
 		},
 		&ast.StmtFunction{
 			Name: &ast.Identifier{
@@ -208,7 +206,6 @@ class Bar {
 					},
 				},
 			},
-			Stmts: []ast.Vertex{},
 		},
 		&ast.StmtClass{
 			Name: &ast.Identifier{
@@ -317,7 +314,6 @@ class Bar {
 						},
 					},
 					Stmt: &ast.StmtStmtList{
-						Stmts: []ast.Vertex{},
 					},
 				},
 				&ast.StmtClassMethod{
@@ -353,7 +349,6 @@ class Bar {
 						},
 					},
 					Stmt: &ast.StmtStmtList{
-						Stmts: []ast.Vertex{},
 					},
 				},
 				&ast.StmtClassMethod{
@@ -389,7 +384,6 @@ class Bar {
 						},
 					},
 					Stmt: &ast.StmtStmtList{
-						Stmts: []ast.Vertex{},
 					},
 				},
 			},
