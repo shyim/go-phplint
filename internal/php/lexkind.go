@@ -78,12 +78,18 @@ func (lex *Lexer) identifierToken() token.ID {
 	return token.T_STRING
 }
 
-// consumeSetVisibility folds a following "(set)" into this keyword and reports
-// whether it did. PHP accepts no whitespace inside public(set), protected(set),
-// or private(set). Any other "(" stays in the token stream so the type grammar
-// can see it. The caller has p at the last byte of the keyword and increments
-// p once after return. The resulting token is not an identifier.
+// consumeSetVisibility folds a following "(set)" into this keyword on PHP 8.4
+// and newer, where public(set), protected(set), and private(set) are one
+// asymmetric-visibility token. Older profiles leave the parenthesis in the
+// token stream, so A::public(set) stays a static call. PHP accepts no
+// whitespace inside the modifier. Any other "(" stays in the token stream so
+// the type grammar can see it. The caller has p at the last byte of the
+// keyword and increments p once after return. The resulting token is not an
+// identifier.
 func (lex *Lexer) consumeSetVisibility() bool {
+	if !lex.versionAtLeast(8, 4) {
+		return false
+	}
 	end := lex.te
 	if end+5 > lex.pe || lex.data[end] != '(' {
 		return false

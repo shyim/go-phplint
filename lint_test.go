@@ -1189,6 +1189,24 @@ func TestSetVisibilityIsOnlyAModifier(t *testing.T) {
 		}
 	}
 
+	// Before PHP 8.4, public(set) is not a modifier. A::public(set) is a static call.
+	for _, version := range []Version{PHP74, PHP83} {
+		for _, visibility := range []string{"public", "protected", "private"} {
+			version, visibility := version, visibility
+			t.Run(fmt.Sprintf("static fetch %s %s", visibility, version), func(t *testing.T) {
+				t.Parallel()
+				source := fmt.Sprintf("<?php class A { const X = 1; } echo A::%s(set);", visibility)
+				diagnostics, err := Lint("name.php", []byte(source), Options{PHPVersion: version})
+				if err != nil {
+					t.Fatalf("Lint() error = %v", err)
+				}
+				if len(diagnostics) != 0 {
+					t.Fatalf("Lint() diagnostics = %#v, want none", diagnostics)
+				}
+			})
+		}
+	}
+
 	accepts := []struct {
 		name   string
 		source string
