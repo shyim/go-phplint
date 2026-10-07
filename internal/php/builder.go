@@ -1623,3 +1623,10 @@ func (b *Builder) NewArgumentList(
 		CloseParenthesisTkn: CloseParenthesisTkn,
 	}
 }
+
+// WithParameterHooks retains promoted property hooks and includes them in the parameter span.
+func (b *Builder) WithParameterHooks(parameter *ast.Parameter, hooks []ast.PropertyHook, close *token.Token) *ast.Parameter {
+	parameter.Hooks = hooks
+	parameter.Position = b.Pos.NewNodeTokenPosition(parameter, close)
+	return parameter
+}

@@ -431,11 +431,22 @@ func preparePropertyHooks(
 	diagnostics *[]Diagnostic,
 ) {
 	for index := 0; index+1 < len(tokens); index++ {
-		if tokens[index].ID != token.T_PROPERTY_HOOKS || !layout.classMember[index] {
+		if tokens[index].ID != token.T_PROPERTY_HOOKS {
 			continue
 		}
-		hookNameIndex := propertyHookNameIndex(tokens, index+1, len(tokens))
-		if hookNameIndex < 0 || !looksLikePropertyDeclaration(tokens, index) {
+		if propertyHookNameIndex(tokens, index+1, len(tokens)) < 0 {
+			continue
+		}
+		var declarationStart int
+		switch {
+		case layout.functionParam[index]:
+			declarationStart = parameterStart(tokens, index)
+		case layout.classMember[index]:
+			if !looksLikePropertyDeclaration(tokens, index) {
+				continue
+			}
+			declarationStart = classMemberStart(tokens, index)
+		default:
 			continue
 		}
 
@@ -448,6 +459,7 @@ func preparePropertyHooks(
 			validatePropertyHookBlock(
 				tokens,
 				layout,
+				declarationStart,
 				index,
 				closeIndex,
 				filename,
@@ -471,13 +483,24 @@ func preparePropertyHooks(
 func validatePropertyHookBlock(
 	tokens []*token.Token,
 	layout sourceLayout,
-	openIndex, closeIndex int,
+	declarationStart, openIndex, closeIndex int,
 	filename string,
 	diagnostics *[]Diagnostic,
 ) {
-	declarationStart := classMemberStart(tokens, openIndex)
 	hasAbstract := false
+	nesting := 0
 	for index := declarationStart; index < openIndex; index++ {
+		switch tokens[index].ID {
+		case token.T_ATTRIBUTE, token.ID('('), token.ID('['):
+			nesting++
+			continue
+		case token.ID(')'), token.ID(']'):
+			nesting--
+			continue
+		}
+		if nesting > 0 {
+			continue
+		}
 		switch tokens[index].ID {
 		case token.T_STATIC:
 			addSourceDiagnostic(
@@ -744,6 +767,31 @@ func classMemberStart(tokens []*token.Token, index int) int {
 		switch tokens[cursor].ID {
 		case token.ID(';'), token.ID('{'), token.ID('}'):
 			return cursor + 1
+		}
+	}
+	return 0
+}
+
+// parameterStart returns the index of the first token of the parameter that
+// contains index: the token after the enclosing "(" or the preceding
+// top-level ",".
+func parameterStart(tokens []*token.Token, index int) int {
+	depth := 0
+	for cursor := index - 1; cursor >= 0; cursor-- {
+		switch tokens[cursor].ID {
+		case token.ID(')'), token.ID(']'):
+			depth++
+		case token.ID('['), token.T_ATTRIBUTE:
+			depth--
+		case token.ID('('):
+			if depth == 0 {
+				return cursor + 1
+			}
+			depth--
+		case token.ID(','):
+			if depth == 0 {
+				return cursor + 1
+			}
 		}
 	}
 	return 0

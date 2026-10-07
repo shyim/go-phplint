@@ -46,6 +46,7 @@ type Parameter struct {
 	Var          Vertex
 	EqualTkn     *token.Token
 	DefaultValue Vertex
+	Hooks        []PropertyHook
 }
 
 // Identifier node

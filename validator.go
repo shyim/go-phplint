@@ -436,7 +436,7 @@ func (v *compileValidator) validateParameter(parameter *ast.Parameter) {
 	}
 	_, asymmetric := setVisibility(modifiers)
 	promoted := modifiers["public"] || modifiers["protected"] ||
-		modifiers["private"] || asymmetric || readonly
+		modifiers["private"] || asymmetric || readonly || len(parameter.Hooks) > 0
 	v.validateAsymmetricUse(parameter, modifiers, parameter.Type != nil)
 
 	if promoted {
@@ -455,6 +455,18 @@ func (v *compileValidator) validateParameter(parameter *ast.Parameter) {
 		if parameter.VariadicTkn != nil {
 			v.report(parameter, "promoted properties cannot be variadic")
 		}
+	}
+
+	if len(parameter.Hooks) > 0 {
+		// A promoted parameter default initializes the parameter, not the property.
+		property := &ast.StmtPropertyList{
+			Position: parameter.Position, Modifiers: parameter.Modifiers, Type: parameter.Type,
+			Hooked: true, Hooks: parameter.Hooks,
+			Props: []ast.Vertex{&ast.StmtProperty{Position: parameter.Var.GetPosition(), Var: parameter.Var}},
+		}
+		v.verifyHookedProperty(property, v.enclosingClassKind())
+		v.validateType(parameter.Type, typeContextProperty)
+		v.validateHookBodies(parameter.Hooks)
 	}
 
 	v.validateType(parameter.Type, typeContextParameter)
@@ -491,6 +503,7 @@ func (v *compileValidator) validatePropertyList(property *ast.StmtPropertyList) 
 	v.validateAsymmetricUse(property, modifiers, property.Type != nil)
 	if property.Hooked {
 		v.verifyHookedProperty(property, v.enclosingClassKind())
+		v.validateHookBodies(property.Hooks)
 	}
 	v.validateType(property.Type, typeContextProperty)
 	for _, propertyNode := range property.Props {
@@ -1121,4 +1134,17 @@ func allowedOutsideNamespace(statement ast.Vertex) bool {
 	}
 	_, isNamespace := statement.(*ast.StmtNamespace)
 	return isNamespace
+}
+
+// Hooks have their own function scope, independent of the enclosing constructor.
+func (v *compileValidator) validateHookBodies(hooks []ast.PropertyHook) {
+	for _, hook := range hooks {
+		v.stack = append(v.stack, &ast.ExprClosure{})
+		walk := traverser.NewTraverser(v)
+		walk.Traverse(hook.Body)
+		for _, statement := range hook.Stmts {
+			walk.Traverse(statement)
+		}
+		v.stack = v.stack[:len(v.stack)-1]
+	}
 }
