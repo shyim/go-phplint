@@ -49,8 +49,8 @@ jobs:
             image: "php:8.4-cli@sha256:3a70cc45c4b03b691f04ea3c032030613a5ff6ee61053127aadb8a93b39cc7c3"
           - php: "8.5"
             image: "php:8.5-cli@sha256:58b996c35ce0511cdbaa1fc0476a194fd0221097d721ff7df5af0b6f1a3d0202"
-          - php: "8.6 Alpha 2"
-            image: "php:8.6-rc-cli@sha256:41f6360c7e9b5b960e919784c53561d7b47fa93bf28ada86b74358eb252f8862"
+          - php: "8.6"
+            image: "php:8.6-cli@sha256:d84acf3155d907afaa5afa9b9457c5f12016b6dc7ade84659f40cdc505cc087d"
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v5

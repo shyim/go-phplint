@@ -64,6 +64,9 @@ type Argument struct {
 	VariadicTkn  *token.Token
 	AmpersandTkn *token.Token
 	Expr         Vertex
+	// PlaceholderTkn is the '?' or '...' token of a PHP 8.6 partial
+	// function application placeholder. When set, Expr is nil.
+	PlaceholderTkn *token.Token
 }
 
 // Attribute node
@@ -73,6 +76,7 @@ type Attribute struct {
 	OpenParenthesisTkn  *token.Token
 	Args                []Vertex
 	SeparatorTkns       []*token.Token
+	EllipsisTkn         *token.Token
 	CloseParenthesisTkn *token.Token
 }
 
@@ -224,6 +228,7 @@ type StmtClass struct {
 	OpenParenthesisTkn      *token.Token
 	Args                    []Vertex
 	SeparatorTkns           []*token.Token
+	EllipsisTkn             *token.Token
 	CloseParenthesisTkn     *token.Token
 	ExtendsTkn              *token.Token
 	Extends                 Vertex
@@ -266,6 +271,7 @@ type StmtClassMethod struct {
 // StmtConstList node
 type StmtConstList struct {
 	Position      *position.Position
+	AttrGroups    []Vertex
 	ConstTkn      *token.Token
 	Consts        []Vertex
 	SeparatorTkns []*token.Token
@@ -804,6 +810,14 @@ type ExprClone struct {
 	Position *position.Position
 	CloneTkn *token.Token
 	Expr     Vertex
+	// Parenthesized clone forms (PHP 8.5+): clone(), clone(...),
+	// clone(?), clone($obj, ...). Args holds every argument of the
+	// parenthesized form, including placeholders.
+	OpenParenthesisTkn  *token.Token
+	Args                []Vertex
+	SeparatorTkns       []*token.Token
+	EllipsisTkn         *token.Token
+	CloseParenthesisTkn *token.Token
 }
 
 // ExprClosure node
@@ -874,6 +888,12 @@ type ExprExit struct {
 	OpenParenthesisTkn  *token.Token
 	Expr                Vertex
 	CloseParenthesisTkn *token.Token
+	// Args is the general argument-list form (multiple arguments, named
+	// arguments, or PHP 8.6 placeholders). It is mutually exclusive with
+	// Expr, which is kept for the common single-expression form.
+	Args          []Vertex
+	SeparatorTkns []*token.Token
+	EllipsisTkn   *token.Token
 }
 
 // ExprFunctionCall node
@@ -967,6 +987,7 @@ type ExprNew struct {
 	OpenParenthesisTkn  *token.Token
 	Args                []Vertex
 	SeparatorTkns       []*token.Token
+	EllipsisTkn         *token.Token
 	CloseParenthesisTkn *token.Token
 }
 

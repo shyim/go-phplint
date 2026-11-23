@@ -2,6 +2,7 @@ package phplint
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/shyim/go-phplint/internal/ast"
 )
@@ -39,11 +40,14 @@ func isConstantExpression(node ast.Vertex, version Version, context constantCont
 	case *ast.ExprArrowFunction:
 		return false
 	case *ast.ExprFunctionCall:
-		return version >= PHP85 && current.EllipsisTkn != nil
-	case *ast.ExprMethodCall:
-		return version >= PHP85 && current.EllipsisTkn != nil
+		return constantCallableName(current.Function) && constantCallableArgs(current.EllipsisTkn != nil, current.Args, version, context)
 	case *ast.ExprStaticCall:
-		return version >= PHP85 && current.EllipsisTkn != nil
+		return !strings.EqualFold(nodeName(current.Class), "static") && constantCallableName(current.Class) && constantCallableName(current.Call) &&
+			constantCallableArgs(current.EllipsisTkn != nil, current.Args, version, context)
+	case *ast.ExprExit:
+		return constantCallableArgs(current.EllipsisTkn != nil, current.Args, version, context)
+	case *ast.ExprClone:
+		return constantCallableArgs(current.EllipsisTkn != nil, current.Args, version, context)
 	case *ast.ExprNew:
 		if version < PHP81 || !newAllowedInConstantContext(context) {
 			return false
@@ -142,4 +146,54 @@ func constantChildrenAllowed(node ast.Vertex, version Version, context constantC
 	}
 
 	return true
+}
+
+// PHP accepts ordinary names and literal string targets, including concatenated
+// string literals. A variable or a constant fetch is a dynamic target.
+func constantCallableName(node ast.Vertex) bool {
+	switch n := node.(type) {
+	case *ast.Name, *ast.NameRelative, *ast.NameFullyQualified, *ast.Identifier, *ast.ScalarString:
+		return true
+	case *ast.ExprBrackets:
+		return constantCallableName(n.Expr)
+	case *ast.ExprBinaryConcat:
+		return literalConcatOperand(n.Left) && literalConcatOperand(n.Right)
+	}
+	return false
+}
+
+// Numeric literals in a concatenation are converted to strings by the parser.
+func literalConcatOperand(node ast.Vertex) bool {
+	switch n := node.(type) {
+	case *ast.ScalarLnumber, *ast.ScalarDnumber:
+		return true
+	case *ast.ExprBrackets:
+		return literalConcatOperand(n.Expr)
+	default:
+		return constantCallableName(node)
+	}
+}
+
+func constantCallableArgs(ellipsis bool, args []ast.Vertex, version Version, context constantContext) bool {
+	if ellipsis {
+		return version >= PHP85
+	}
+	if version < PHP86 {
+		return false
+	}
+	hasPlaceholder := false
+	for _, argNode := range args {
+		argument, ok := argNode.(*ast.Argument)
+		if !ok {
+			return false
+		}
+		if argument.PlaceholderTkn != nil {
+			hasPlaceholder = true
+			continue
+		}
+		if !isConstantExpression(argNode, version, context) {
+			return false
+		}
+	}
+	return hasPlaceholder
 }

@@ -421,6 +421,60 @@ func TestLintVersionBoundaries(t *testing.T) {
 			before:     PHP85,
 			introduced: PHP86,
 		},
+		{
+			name:       "partial function application",
+			source:     "<?php $compare = version_compare(?, '8.6', '>=');",
+			before:     PHP85,
+			introduced: PHP86,
+		},
+		{
+			name:       "partial function application variadic placeholder",
+			source:     "<?php $format = sprintf('%s %s', ?, ...);",
+			before:     PHP85,
+			introduced: PHP86,
+		},
+		{
+			name:       "partial function application constant",
+			source:     "<?php const COMPARE = version_compare(?, '8.6', '>=');",
+			before:     PHP85,
+			introduced: PHP86,
+		},
+		{
+			name:       "readonly property default",
+			source:     "<?php class C { public readonly int $value = 1; }",
+			before:     PHP85,
+			introduced: PHP86,
+		},
+		{
+			name:       "readonly class property default",
+			source:     "<?php readonly class C { public int $value = 1; }",
+			before:     PHP85,
+			introduced: PHP86,
+		},
+		{
+			name:       "constant object property write",
+			source:     "<?php const OBJ = new stdClass; OBJ->prop = 1;",
+			before:     PHP85,
+			introduced: PHP86,
+		},
+		{
+			name:       "override property",
+			source:     "<?php class P { public int $x; } class C extends P { #[\\Override] public int $x; }",
+			before:     PHP84,
+			introduced: PHP85,
+		},
+		{
+			name:       "first class callable exit",
+			source:     "<?php $shutdown = exit(...);",
+			before:     PHP83,
+			introduced: PHP84,
+		},
+		{
+			name:       "first class callable clone",
+			source:     "<?php $copy = clone(...);",
+			before:     PHP84,
+			introduced: PHP85,
+		},
 	}
 
 	for _, test := range tests {

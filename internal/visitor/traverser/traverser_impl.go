@@ -423,6 +423,10 @@ func (t *Traverser) StmtConstList(n *ast.StmtConstList) {
 
     n.Accept(t.v)
 
+    for _, nn := range n.AttrGroups {
+        nn.Accept(t)
+    }
+
     for _, nn := range n.Consts {
         nn.Accept(t)
     }
@@ -1177,6 +1181,10 @@ func (t *Traverser) ExprClone(n *ast.ExprClone) {
 
     t.Traverse(n.Expr)
 
+    for _, nn := range n.Args {
+        nn.Accept(t)
+    }
+
     t.leave(n)
 }
 
@@ -1276,6 +1284,10 @@ func (t *Traverser) ExprExit(n *ast.ExprExit) {
     n.Accept(t.v)
 
     t.Traverse(n.Expr)
+
+    for _, nn := range n.Args {
+        nn.Accept(t)
+    }
 
     t.leave(n)
 }

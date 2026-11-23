@@ -730,6 +730,36 @@ func (b *Builder) NewNamedArgument(
 	}
 }
 
+// NewPlaceholderArgument builds a PHP 8.6 partial function application
+// placeholder: '?' (one argument) or '...' (variadic).
+func (b *Builder) NewPlaceholderArgument(
+	PlaceholderTkn *token.Token,
+) *ast.Argument {
+	return &ast.Argument{
+		Position:       b.Pos.NewTokenPosition(PlaceholderTkn),
+		PlaceholderTkn: PlaceholderTkn,
+	}
+}
+
+// NewNamedPlaceholderArgument builds a named PHP 8.6 placeholder such as
+// `attempt: ?`.
+func (b *Builder) NewNamedPlaceholderArgument(
+	Name *token.Token,
+	ColonTkn *token.Token,
+	PlaceholderTkn *token.Token,
+) *ast.Argument {
+	return &ast.Argument{
+		Position: b.Pos.NewTokensPosition(Name, PlaceholderTkn),
+		Name: &ast.Identifier{
+			Position:      Name.Position,
+			IdentifierTkn: Name,
+			Value:         Name.Value,
+		},
+		ColonTkn:       ColonTkn,
+		PlaceholderTkn: PlaceholderTkn,
+	}
+}
+
 func (b *Builder) NewMatch(
 	MatchTkn *token.Token,
 	OpenParenthesisTkn *token.Token,
@@ -1035,6 +1065,7 @@ func (b *Builder) NewAttribute(
 		OpenParenthesisTkn:  args.open,
 		Args:                args.items,
 		SeparatorTkns:       args.seps,
+		EllipsisTkn:         args.extra,
 		CloseParenthesisTkn: args.close,
 	}
 }
@@ -1146,6 +1177,7 @@ func (b *Builder) NewAnonClass(
 
 	class.OpenParenthesisTkn = ArgList.open
 	class.Args = ArgList.items
+	class.EllipsisTkn = ArgList.extra
 	class.SeparatorTkns = ArgList.seps
 	class.CloseParenthesisTkn = ArgList.close
 

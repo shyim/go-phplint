@@ -262,7 +262,7 @@ import (
 %type <node> absolute_trait_method_reference trait_method_reference property echo_expr
 %type <node> new_expr anonymous_class class_name class_name_or_var class_name_reference simple_variable
 %type <node> internal_functions_in_yacc non_empty_array_pair_list array_pair_list
-%type <node> exit_expr scalar lexical_var function_call member_name property_name
+%type <node> scalar lexical_var function_call member_name property_name
 %type <node> constant class_constant
 %type <node> dereferencable_scalar fully_dereferencable array_object_dereferencable
 %type <node> callable_expr callable_variable static_member new_variable
@@ -475,6 +475,7 @@ top_statement:
             {
                 $$ = &ast.StmtConstList{
                     Position: yylex.(*Parser).builder.Pos.NewOptionalListTokensPosition($1, $2, $4),
+                    AttrGroups:    $1,
                     ConstTkn:      $2,
                     Consts:        $3.items,
                     SeparatorTkns: $3.seps,
@@ -1435,6 +1436,27 @@ argument:
         expr                      { $$ = yylex.(*Parser).builder.NewArgument($1) }
     |   T_ELLIPSIS expr           { $$ = yylex.(*Parser).builder.NewVariadicArgument($1, $2) }
     |   identifier_ex ':' expr    { $$ = yylex.(*Parser).builder.NewNamedArgument($1, $2, $3) }
+    |   '?'                       {
+                                      // PHP 8.6 partial function application placeholder.
+                                      if !yylex.(*Parser).versionAtLeast(8, 6) {
+                                          yylex.(*Parser).Error("partial function application requires PHP 8.6")
+                                      }
+                                      $$ = yylex.(*Parser).builder.NewPlaceholderArgument($1)
+                                  }
+    |   T_ELLIPSIS                {
+                                      // Variadic placeholder; a lone `foo(...)` still reduces
+                                      // through the first-class callable argument_list rule.
+                                      if !yylex.(*Parser).versionAtLeast(8, 6) {
+                                          yylex.(*Parser).Error("partial function application requires PHP 8.6")
+                                      }
+                                      $$ = yylex.(*Parser).builder.NewPlaceholderArgument($1)
+                                  }
+    |   identifier_ex ':' '?'     {
+                                      if !yylex.(*Parser).versionAtLeast(8, 6) {
+                                          yylex.(*Parser).Error("partial function application requires PHP 8.6")
+                                      }
+                                      $$ = yylex.(*Parser).builder.NewNamedPlaceholderArgument($1, $2, $3)
+                                  }
 ;
 
 global_var_list:
@@ -1961,6 +1983,7 @@ new_expr:
                         OpenParenthesisTkn:  $3.open,
                         Args:                $3.items,
                         SeparatorTkns:       $3.seps,
+                        EllipsisTkn:         $3.extra,
                         CloseParenthesisTkn: $3.close,
                     }
                 } else {
@@ -2107,12 +2130,39 @@ expr_without_variable:
                     Expr:     $2,
                 }
             }
-    |   T_CLONE '(' expr ',' non_empty_expr_list ')'
+    |   T_CLONE '(' ')'
             {
                 $$ = &ast.ExprClone{
-                    Position: yylex.(*Parser).builder.Pos.NewTokensPosition($1, $6),
-                    CloneTkn: $1,
-                    Expr:     $3,
+                    Position:            yylex.(*Parser).builder.Pos.NewTokensPosition($1, $3),
+                    CloneTkn:            $1,
+                    OpenParenthesisTkn:  $2,
+                    CloseParenthesisTkn: $3,
+                }
+            }
+    |   T_CLONE '(' T_ELLIPSIS ')'
+            {
+                $$ = &ast.ExprClone{
+                    Position:            yylex.(*Parser).builder.Pos.NewTokensPosition($1, $4),
+                    CloneTkn:            $1,
+                    OpenParenthesisTkn:  $2,
+                    EllipsisTkn:         $3,
+                    CloseParenthesisTkn: $4,
+                }
+            }
+    |   T_CLONE '(' non_empty_argument_list optional_comma argument_close
+            {
+                // Parenthesized clone argument list (PHP 8.5+): clone-with
+                // and PHP 8.6 partial application. `clone($expr)` without a
+                // comma still parses through T_CLONE expr because yacc
+                // prefers shifting ')' into the bracket expression.
+                args := appendItem($3, $4, nil)
+                $$ = &ast.ExprClone{
+                    Position:            yylex.(*Parser).builder.Pos.NewTokensPosition($1, $5),
+                    CloneTkn:            $1,
+                    OpenParenthesisTkn:  $2,
+                    Args:                args.items,
+                    SeparatorTkns:       args.seps,
+                    CloseParenthesisTkn: $5,
                 }
             }
     |   variable T_PLUS_EQUAL expr
@@ -2672,19 +2722,54 @@ expr_without_variable:
                     Expr:    $2,
                 }
             }
-    |   T_EXIT exit_expr
+    |   T_EXIT ctor_arguments
             {
+                // Before PHP 8.4 exit only accepts `exit`, `exit()` and
+                // `exit(expr)`; the general argument list arrived with
+                // first-class callable support for exit in PHP 8.4.
+                if !yylex.(*Parser).versionAtLeast(8, 4) {
+                    bad := $2.extra != nil || len($2.items) > 1 ||
+                        (len($2.items) > 0 && len($2.seps) >= len($2.items))
+                    if !bad && len($2.items) == 1 {
+                        if arg, ok := $2.items[0].(*ast.Argument); ok &&
+                            (arg.Name != nil || arg.VariadicTkn != nil ||
+                                arg.PlaceholderTkn != nil || arg.AmpersandTkn != nil) {
+                            bad = true
+                        }
+                    }
+                    if bad {
+                        yylex.(*Parser).Error("exit argument lists require PHP 8.4")
+                    }
+                }
+
                 exit := &ast.ExprExit{
                     ExitTkn: $1,
                 }
 
-                if $2 == nil {
+                if $2.open == nil {
                     exit.Position = yylex.(*Parser).builder.Pos.NewTokenPosition($1)
                 } else {
-                    exit.Position       = yylex.(*Parser).builder.Pos.NewTokenNodePosition($1, $2)
-                    exit.OpenParenthesisTkn  = $2.(*ast.ExprBrackets).OpenParenthesisTkn
-                    exit.Expr                = $2.(*ast.ExprBrackets).Expr
-                    exit.CloseParenthesisTkn = $2.(*ast.ExprBrackets).CloseParenthesisTkn
+                    exit.Position            = yylex.(*Parser).builder.Pos.NewTokensPosition($1, $2.close)
+                    exit.OpenParenthesisTkn  = $2.open
+                    exit.CloseParenthesisTkn = $2.close
+                    exit.EllipsisTkn         = $2.extra
+
+                    // Keep the historical single-expression shape for the
+                    // common `exit($status)` form; everything else uses the
+                    // general argument list.
+                    if len($2.items) == 1 && $2.extra == nil {
+                        if arg, ok := $2.items[0].(*ast.Argument); ok &&
+                            arg.Name == nil && arg.VariadicTkn == nil &&
+                            arg.PlaceholderTkn == nil && arg.AmpersandTkn == nil {
+                            exit.Expr = arg.Expr
+                        } else {
+                            exit.Args = $2.items
+                            exit.SeparatorTkns = $2.seps
+                        }
+                    } else {
+                        exit.Args = $2.items
+                        exit.SeparatorTkns = $2.seps
+                    }
                 }
 
                 $$ = exit
@@ -2952,11 +3037,6 @@ class_name_reference:
         class_name            { $$ = $1 }
     |   new_variable          { $$ = $1 }
     |   '(' expr ')'          { $$ = yylex.(*Parser).builder.NewBracket($1, $2, $3) }
-;
-
-exit_expr:
-        /* empty */           { $$ = nil }
-    |   '(' optional_expr ')' { $$ = yylex.(*Parser).builder.NewBracket($1, $2, $3) }
 ;
 
 backticks_expr:

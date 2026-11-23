@@ -20,7 +20,7 @@ const (
 	PHP83
 	PHP84
 	PHP85
-	// PHP86 is the preview profile for the current PHP 8.6 prerelease.
+	// PHP86 is the PHP 8.6 language profile (PHP 8.6.0, released 2026-11-19).
 	PHP86
 )
 
@@ -65,7 +65,7 @@ func ParseVersion(value string) (Version, error) {
 		return PHP86, nil
 	default:
 		return 0, fmt.Errorf(
-			"unsupported PHP version %q (supported: 7.2, 7.3, 7.4, 8.0, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6 preview)",
+			"unsupported PHP version %q (supported: 7.2, 7.3, 7.4, 8.0, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6)",
 			value,
 		)
 	}
