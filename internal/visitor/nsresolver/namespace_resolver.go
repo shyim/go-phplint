@@ -2,6 +2,7 @@
 package nsresolver
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 
@@ -42,7 +43,7 @@ func (nsr *NamespaceResolver) StmtNamespace(n *ast.StmtNamespace) {
 	if n.Name == nil {
 		nsr.Namespace = NewNamespace("")
 	} else {
-		NSParts := n.Name.(*ast.Name).Parts
+		NSParts := nameNodeParts(n.Name)
 		nsr.Namespace = NewNamespace(concatNameParts(NSParts))
 	}
 }
@@ -67,7 +68,7 @@ func (nsr *NamespaceResolver) StmtGroupUse(n *ast.StmtGroupUseList) {
 	}
 
 	for _, nn := range n.Uses {
-		nsr.AddAlias(useType, nn, n.Prefix.(*ast.Name).Parts)
+		nsr.AddAlias(useType, nn, nameNodeParts(n.Prefix))
 	}
 
 	nsr.goDeep = false
@@ -101,6 +102,21 @@ func (nsr *NamespaceResolver) StmtInterface(n *ast.StmtInterface) {
 
 func (nsr *NamespaceResolver) StmtTrait(n *ast.StmtTrait) {
 	nsr.AddNamespacedName(n, string(n.Name.(*ast.Identifier).Value))
+}
+
+func (nsr *NamespaceResolver) StmtEnum(n *ast.StmtEnum) {
+	for _, interfaceName := range n.Implements {
+		nsr.ResolveName(interfaceName, "")
+	}
+
+	nsr.AddNamespacedName(n, string(n.Name.(*ast.Identifier).Value))
+}
+
+// Attribute resolves attribute names like class names so callers can
+// recognize internal attributes such as \Override regardless of how they
+// are spelled or imported.
+func (nsr *NamespaceResolver) Attribute(n *ast.Attribute) {
+	nsr.ResolveName(n.Name, "")
 }
 
 func (nsr *NamespaceResolver) StmtFunction(n *ast.StmtFunction) {
@@ -224,7 +240,7 @@ func (nsr *NamespaceResolver) AddAlias(useType string, nn ast.Vertex, prefix []a
 			useType = string(use.Type.(*ast.Identifier).Value)
 		}
 
-		useNameParts := use.Use.(*ast.Name).Parts
+		useNameParts := nameNodeParts(use.Use)
 		var alias string
 		if use.Alias == nil {
 			alias = string(useNameParts[len(useNameParts)-1].(*ast.NamePart).Value)
@@ -301,24 +317,26 @@ func (ns *Namespace) ResolveName(nameNode ast.Vertex, aliasType string) (string,
 	switch n := nameNode.(type) {
 	case *ast.NameFullyQualified:
 		// Fully qualifid name is already resolved
-		return concatNameParts(n.Parts), nil
+		return concatNameParts(nameNodeParts(n)), nil
 
 	case *ast.NameRelative:
+		parts := nameNodeParts(n)
 		if ns.Namespace == "" {
-			return concatNameParts(n.Parts), nil
+			return concatNameParts(parts), nil
 		}
-		return ns.Namespace + "\\" + concatNameParts(n.Parts), nil
+		return ns.Namespace + "\\" + concatNameParts(parts), nil
 
 	case *ast.Name:
-		if aliasType == "const" && len(n.Parts) == 1 {
-			part := strings.ToLower(string(n.Parts[0].(*ast.NamePart).Value))
+		parts := nameNodeParts(n)
+		if aliasType == "const" && len(parts) == 1 {
+			part := strings.ToLower(string(parts[0].(*ast.NamePart).Value))
 			if part == "true" || part == "false" || part == "null" {
 				return part, nil
 			}
 		}
 
-		if aliasType == "" && len(n.Parts) == 1 {
-			part := strings.ToLower(string(n.Parts[0].(*ast.NamePart).Value))
+		if aliasType == "" && len(parts) == 1 {
+			part := strings.ToLower(string(parts[0].(*ast.NamePart).Value))
 
 			switch part {
 			case "self":
@@ -348,14 +366,14 @@ func (ns *Namespace) ResolveName(nameNode ast.Vertex, aliasType string) (string,
 		if err != nil {
 			// resolve as relative name if alias not found
 			if ns.Namespace == "" {
-				return concatNameParts(n.Parts), nil
+				return concatNameParts(parts), nil
 			}
-			return ns.Namespace + "\\" + concatNameParts(n.Parts), nil
+			return ns.Namespace + "\\" + concatNameParts(parts), nil
 		}
 
-		if len(n.Parts) > 1 {
+		if len(parts) > 1 {
 			// if name qualified, replace first part by alias
-			return aliasName + "\\" + concatNameParts(n.Parts[1:]), nil
+			return aliasName + "\\" + concatNameParts(parts[1:]), nil
 		}
 
 		return aliasName, nil
@@ -367,7 +385,10 @@ func (ns *Namespace) ResolveName(nameNode ast.Vertex, aliasType string) (string,
 // ResolveAlias returns alias or error if not found
 func (ns *Namespace) ResolveAlias(nameNode ast.Vertex, aliasType string) (string, error) {
 	aliasType = strings.ToLower(aliasType)
-	nameParts := nameNode.(*ast.Name).Parts
+	nameParts := nameNodeParts(nameNode)
+	if len(nameParts) == 0 {
+		return "", errors.New("empty name")
+	}
 
 	firstPartStr := string(nameParts[0].(*ast.NamePart).Value)
 
@@ -402,4 +423,48 @@ func concatNameParts(parts ...[]ast.Vertex) string {
 	}
 
 	return str
+}
+
+// nameNodeParts returns the parts of a name node. Parsers running without
+// fidelity store only the raw Value, so synthesize parts from it when the
+// Parts slice is empty. Leading separators and the relative "namespace"
+// prefix are stripped exactly like the fidelity-mode builders do.
+func nameNodeParts(node ast.Vertex) []ast.Vertex {
+	var value []byte
+	switch n := node.(type) {
+	case *ast.Name:
+		if len(n.Parts) > 0 {
+			return n.Parts
+		}
+		value = n.Value
+	case *ast.NameFullyQualified:
+		if len(n.Parts) > 0 {
+			return n.Parts
+		}
+		value = bytes.TrimPrefix(n.Value, []byte("\\"))
+	case *ast.NameRelative:
+		if len(n.Parts) > 0 {
+			return n.Parts
+		}
+		value = n.Value
+		if len(value) >= 9 && strings.EqualFold(string(value[:9]), "namespace") {
+			value = value[9:]
+		}
+		value = bytes.TrimPrefix(value, []byte("\\"))
+	default:
+		return nil
+	}
+
+	if len(value) == 0 {
+		return nil
+	}
+	segments := bytes.Split(value, []byte("\\"))
+	parts := make([]ast.Vertex, 0, len(segments))
+	for _, segment := range segments {
+		if len(segment) == 0 {
+			continue
+		}
+		parts = append(parts, &ast.NamePart{Value: segment})
+	}
+	return parts
 }

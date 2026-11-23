@@ -5,7 +5,7 @@
 `phplint` is a source-only PHP syntax and compile-time linter written in Go. It
 selects the PHP language profile explicitly, so one executable can check code
 for PHP 7.2 through 7.4 or any PHP 8 minor from 8.0 through 8.6 without
-installing those PHP runtimes. PHP 8.6 support is currently a preview profile.
+installing those PHP runtimes.
 
 The normal build is pure Go. A single unified PHP lexer/parser in
 `internal/php` accepts the full PHP 7/8 syntax superset for every supported
@@ -36,7 +36,7 @@ Pass exactly one supported PHP minor and one or more files:
 phplint --php-version 7.2 oldest-supported.php
 phplint --php-version 7.4 legacy.php
 phplint --php-version 8.4 src/App.php src/Domain.php
-phplint --php-version 8.6 preview.php
+phplint --php-version 8.6 src/Modern.php
 ```
 
 A successful run is silent. A source failure is concise:
@@ -93,10 +93,11 @@ excerpts without re-reading the file.
 ## Compatibility scope
 
 The stable profiles are exactly `7.2`, `7.3`, `7.4`, `8.0`, `8.1`, `8.2`,
-`8.3`, `8.4`, and `8.5`. The `8.6` profile follows PHP 8.6.0 Alpha 2 and
-remains a preview until PHP 8.6 reaches general availability. Patch versions
-such as `8.4.2` are rejected because syntax profiles are maintained at
-minor-version granularity.
+`8.3`, `8.4`, `8.5`, and `8.6`. The `8.6` profile follows PHP 8.6.0
+(released 2026-11-19), including partial function application, readonly
+property defaults, and `#[\Override]` on class constants, enum cases, and
+properties. Patch versions such as `8.4.2` are rejected because syntax
+profiles are maintained at minor-version granularity.
 
 The goal is native `php -l` pass/fail behavior for syntax errors and
 single-file compile-time fatal errors, not identical diagnostic wording.
@@ -104,6 +105,12 @@ Warnings and deprecations for which `php -l` exits successfully are not
 reported. Tests compare the linter with native PHP binaries across the full
 version matrix. PHP itself remains the final authority for edge cases that
 depend on engine semantics rather than parsing or single-file compilation.
+
+The inheritance checks cover parents declared earlier in the same file.
+The linter skips parents supplied by PHP or extensions. Native PHP can
+check those parents when they are already loaded. Cross-file inheritance
+and full type-variance analysis, including typed class constants and
+parameter signatures, are left to static analyzers such as PHPStan.
 
 ## Development
 

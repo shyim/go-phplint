@@ -9,6 +9,7 @@ import (
 	"github.com/shyim/go-phplint/internal/ast"
 	"github.com/shyim/go-phplint/internal/token"
 	"github.com/shyim/go-phplint/internal/visitor"
+	"github.com/shyim/go-phplint/internal/visitor/nsresolver"
 	"github.com/shyim/go-phplint/internal/visitor/traverser"
 )
 
@@ -18,6 +19,8 @@ type compileValidator struct {
 	filename    string
 	source      []byte
 	version     Version
+	resolver    *nsresolver.NamespaceResolver
+	classes     map[string]*linkedClass
 	stack       []ast.Vertex
 	diagnostics []Diagnostic
 }
@@ -27,6 +30,7 @@ func validate(root ast.Vertex, source []byte, filename string, version Version) 
 		filename: filename,
 		source:   source,
 		version:  version,
+		resolver: nsresolver.NewNamespaceResolver(),
 	}
 	traverser.NewTraverser(validator).Traverse(root)
 	return validator.diagnostics
@@ -37,13 +41,24 @@ func (v *compileValidator) EnterNode(node ast.Vertex) bool {
 	case *ast.Root:
 		v.validateRoot(current)
 	case *ast.StmtNamespace:
+		v.resolver.StmtNamespace(current)
 		v.validateDeclarationList(current.Stmts)
+	case *ast.StmtUseList:
+		v.resolver.StmtUse(current)
+	case *ast.StmtGroupUseList:
+		v.resolver.StmtGroupUse(current)
 	case *ast.StmtClass:
 		v.validateClass(current)
+		if current.Name == nil {
+			v.validateTrailingCallComma(current, len(current.Args), len(current.SeparatorTkns))
+			v.validateCallArguments(current, current.Args, current.EllipsisTkn, callNew)
+		}
 	case *ast.StmtInterface:
 		v.validateClassStatements("interface", false, current.Stmts)
+		v.bindClass(current, current.Name, "interface", nil, current.Stmts, nil, len(current.Extends) > 0)
 	case *ast.StmtTrait:
 		v.validateClassStatements("trait", false, current.Stmts)
+		v.bindClass(current, current.Name, "trait", nil, current.Stmts, nil, false)
 	case *ast.StmtEnum:
 		v.requireVersion(current, PHP81, "enums")
 		v.validateClassStatements("enum", false, current.Stmts)
@@ -59,6 +74,8 @@ func (v *compileValidator) EnterNode(node ast.Vertex) bool {
 		v.requireVersion(current, PHP80, "match expressions")
 	case *ast.ExprNullsafeMethodCall:
 		v.requireVersion(current, PHP80, "the nullsafe operator")
+		v.validateTrailingCallComma(current, len(current.Args), len(current.SeparatorTkns))
+		v.validateCallArguments(current, current.Args, current.EllipsisTkn, callNullsafe)
 	case *ast.ExprNullsafePropertyFetch:
 		v.requireVersion(current, PHP80, "the nullsafe operator")
 	case *ast.ExprThrow:
@@ -67,6 +84,53 @@ func (v *compileValidator) EnterNode(node ast.Vertex) bool {
 		v.validateArgument(current)
 	case *ast.ExprAssignCoalesce:
 		v.requireVersion(current, PHP74, "null coalescing assignment")
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssign:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignReference:
+		// `$x = &OBJ->prop` and `OBJ->prop =& $x` both bind a reference
+		// to the fetched property.
+		v.validateWriteTarget(current.Var)
+		v.validateWriteTarget(current.Expr)
+	case *ast.ExprAssignPlus:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignMinus:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignMul:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignDiv:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignMod:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignPow:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignConcat:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignBitwiseAnd:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignBitwiseOr:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignBitwiseXor:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignShiftLeft:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprAssignShiftRight:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprPostInc:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprPreInc:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprPostDec:
+		v.validateWriteTarget(current.Var)
+	case *ast.ExprPreDec:
+		v.validateWriteTarget(current.Var)
+	case *ast.StmtForeach:
+		v.validateWriteTarget(current.Key)
+		v.validateWriteTarget(current.Var)
+	case *ast.StmtUnset:
+		for _, variable := range current.Vars {
+			v.validateWriteTarget(variable)
+		}
 	case *ast.ExprArrayItem:
 		v.validateArrayItem(current)
 	case *ast.StmtPropertyList:
@@ -96,18 +160,34 @@ func (v *compileValidator) EnterNode(node ast.Vertex) bool {
 		if current.EllipsisTkn != nil {
 			v.requireVersion(current, PHP81, "first-class callable syntax")
 		}
+		v.validateCallArguments(current, current.Args, current.EllipsisTkn, callNormal)
 	case *ast.ExprMethodCall:
 		v.validateTrailingCallComma(current, len(current.Args), len(current.SeparatorTkns))
 		if current.EllipsisTkn != nil {
 			v.requireVersion(current, PHP81, "first-class callable syntax")
 		}
+		v.validateCallArguments(current, current.Args, current.EllipsisTkn, callNormal)
 	case *ast.ExprStaticCall:
 		v.validateTrailingCallComma(current, len(current.Args), len(current.SeparatorTkns))
 		if current.EllipsisTkn != nil {
 			v.requireVersion(current, PHP81, "first-class callable syntax")
 		}
+		v.validateCallArguments(current, current.Args, current.EllipsisTkn, callNormal)
 	case *ast.ExprNew:
 		v.validateTrailingCallComma(current, len(current.Args), len(current.SeparatorTkns))
+		v.validateCallArguments(current, current.Args, current.EllipsisTkn, callNew)
+	case *ast.ExprExit:
+		v.validateCallArguments(current, current.Args, current.EllipsisTkn, callNormal)
+	case *ast.ExprClone:
+		if current.EllipsisTkn != nil {
+			v.requireVersion(current, PHP85, "first-class callable syntax for clone")
+		} else if current.OpenParenthesisTkn != nil {
+			v.requireVersion(current, PHP85, "parenthesized clone argument lists")
+		}
+		v.validateCallArguments(current, current.Args, nil, callNormal)
+	case *ast.Attribute:
+		v.validateOverrideTarget(current)
+		v.validateCallArguments(current, current.Args, current.EllipsisTkn, callAttribute)
 	case *ast.ScalarLnumber:
 		v.validateNumberLiteral(current)
 	case *ast.StmtClassConstList:
@@ -126,7 +206,10 @@ func (v *compileValidator) EnterNode(node ast.Vertex) bool {
 	return true
 }
 
-func (v *compileValidator) LeaveNode(ast.Vertex) {
+func (v *compileValidator) LeaveNode(node ast.Vertex) {
+	if ns, ok := node.(*ast.StmtNamespace); ok {
+		v.resolver.LeaveNode(ns)
+	}
 	if len(v.stack) > 0 {
 		v.stack = v.stack[:len(v.stack)-1]
 	}
@@ -224,6 +307,7 @@ func (v *compileValidator) validateClass(class *ast.StmtClass) {
 		v.requireVersion(class, PHP82, "readonly classes")
 	}
 	v.validateClassStatements("class", readonly, class.Stmts)
+	v.bindClass(class, class.Name, "class", class.Extends, class.Stmts, modifiers, len(class.Implements) > 0)
 }
 
 func (v *compileValidator) validateClassStatements(
@@ -436,7 +520,7 @@ func (v *compileValidator) validateParameter(parameter *ast.Parameter) {
 	}
 	_, asymmetric := setVisibility(modifiers)
 	promoted := modifiers["public"] || modifiers["protected"] ||
-		modifiers["private"] || asymmetric || readonly || len(parameter.Hooks) > 0
+		modifiers["private"] || modifiers["final"] || asymmetric || readonly || len(parameter.Hooks) > 0
 	v.validateAsymmetricUse(parameter, modifiers, parameter.Type != nil)
 
 	if promoted {
@@ -512,7 +596,9 @@ func (v *compileValidator) validatePropertyList(property *ast.StmtPropertyList) 
 			continue
 		}
 		if readonly || v.enclosingReadonlyClass() {
-			v.report(current, "readonly properties cannot have default values")
+			if v.version < PHP86 {
+				v.report(current, "readonly properties cannot have default values")
+			}
 		}
 		if !isConstantExpression(current.Expr, v.version, constantContextProperty) {
 			v.report(current.Expr, "property default value must be a constant expression")
@@ -522,10 +608,6 @@ func (v *compileValidator) validatePropertyList(property *ast.StmtPropertyList) 
 
 func (v *compileValidator) validateClassConstants(constants *ast.StmtClassConstList) {
 	modifiers := v.validateModifiers(constants, constants.Modifiers)
-	if hasAttribute(constants.AttrGroups, "override") &&
-		v.version >= PHP83 && v.version < PHP86 {
-		v.report(constants, "the #[Override] attribute on class constants requires PHP 8.6")
-	}
 	if modifiers["abstract"] {
 		v.report(constants, "class constants cannot be abstract")
 	}
@@ -545,10 +627,6 @@ func (v *compileValidator) validateClassConstants(constants *ast.StmtClassConstL
 }
 
 func (v *compileValidator) validateEnumCase(enumCase *ast.EnumCase) {
-	if hasAttribute(enumCase.AttrGroups, "override") &&
-		v.version >= PHP83 && v.version < PHP86 {
-		v.report(enumCase, "the #[Override] attribute on enum cases requires PHP 8.6")
-	}
 	v.validateClassConstantName(enumCase.Name)
 }
 
@@ -1009,26 +1087,6 @@ func modifierSet(modifiers []ast.Vertex) map[string]bool {
 		result[strings.ToLower(nodeName(modifier))] = true
 	}
 	return result
-}
-
-func hasAttribute(groups []ast.Vertex, expected string) bool {
-	for _, groupNode := range groups {
-		group, ok := groupNode.(*ast.AttributeGroup)
-		if !ok {
-			continue
-		}
-		for _, attributeNode := range group.Attrs {
-			attribute, ok := attributeNode.(*ast.Attribute)
-			if !ok {
-				continue
-			}
-			name := strings.ToLower(nodeName(attribute.Name))
-			if name == `\`+expected {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func nodeName(node ast.Vertex) string {
